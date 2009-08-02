@@ -14,7 +14,7 @@ module Wizardly
         @completed_redirect = opts[:redirect] || opts[:completed] || opts[:when_completed] #format_redirect(completed_redirect)
         @canceled_redirect = opts[:redirect] || opts[:canceled] || opts[:when_canceled]
         @allow_skipping = opts[:skip] || opts[:allow_skip] || opts[:allow_skipping] || false
-        @password_fields = opts[:mask_passwords] || [:password, :password_confirmation]
+        @password_fields = opts[:mask_fields] || opts[:mask_passwords] || [:password, :password_confirmation]
         @page_order = []
         @pages = {}
         @buttons = nil

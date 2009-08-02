@@ -101,7 +101,7 @@ Rake::GemPackageTask.new(spec) do |p|
   FileUtils.mkdir "rails_generators"
   FileUtils.cp_r "lib/generators/.", "rails_generators"
   p.gem_spec = spec
-  p.need_tar = false
+  p.need_tar = RUBY_PLATFORM =~ /mswin/ ? false : true
   p.need_zip = true
 end
 

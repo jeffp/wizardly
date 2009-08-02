@@ -1,6 +1,6 @@
 = wizardly
 
-+wizardly+ produces a working wizard from any ActiveRecord model in three steps.
++wizardly+ produces a functional wizard from an ActiveRecord model in three steps.
 
 == Resources
 
@@ -18,24 +18,28 @@ Install
 	
 == Description
 
-Wizards are a common and useful pattern in programming.  Typically, in Ruby, 
-enumerated attributes are implemented with strings, symbols or constants.  Often the 
-developer is burdened with repeatedly defining common methods in support of each
-attribute.  Such repetition coding unnecessarily increases
-costs and wastes time.
-
-+enumerated_attribute+ simplifies the definition of enumerated attributes by emphasizing 
-convention and DRYing the implementation.  Repetitive code such as initializers, accessors, 
-predicate and enumeration methods are automatically generated, resulting in better 
-encapsulation, quicker implementation and cleaner code.
++wizardly+ builds on Alex Kira's +validation_group+ plugin code to 
+DRY up the Rails MVC implementation of a wizard.  In three easy steps, +wizardly+
+produces the scaffolding and controller of a functioning wizard.
 
 Features include:
-* Short and simple definition
-* Auto-defined attribute methods
-* Dynamically-generated predicate methods
-* Attribute initialization
-* Method definition short-hand (DSL)
-* ActiveRecord integration
+* Model-based definition
+* Wizard controller macro
+* Wizard scaffolding generator
+* Default wizard buttons
+* Custom button creation
+* Page and button callbacks
+
+== Setup
+
+Install the wizardly gem and require the gem at the bottom of your config/environment.rb file:
+
+  require 'wizardly'
+
+For any rails app, run the following to install rake tasks (optional)
+
+  ./script/generate wizardly_app
+
 
 == Example
 
@@ -43,370 +47,178 @@ Create a working controller wizard for any model in 3 steps.  Here's how:
 
 Step 1: Define validation groups for your model.
 
-  require 'validation_group'
   class User < ActiveRecord::Base    
     validation_group :step1, :fields=>[:first_name, :last_name]
+    validation_group :step2, :fields=>[:age, :gender]
     ...
   end
 
 Step 2: Tell your controller to act 'wizardly'.
 
-  require 'wizardly'
   class SignupController < ActionController::Base
-    wizard_for_model :user
+    act_wizardly_for :user
   end
 
-Step 3: Generate 'wizardly' views for your controller.
+Step 3: Generate a 'wizardly' scaffold for your controller.
 
   ./script/generate wizardly_scaffold :signup
 
 You are ready to go.
 
+General usage and configuration of wizardly follows.
 
 == Usage
 
-=== Defining the Attribute
+=== Default Behavior and Scaffolding Configuration
 
-Defining an enumerated attribute is as simple as this:
+The wizardly_scaffold generator produces an html view for each validation_group
+declared in the model.  The wizard progresses to each page in the same order of 
+the validation_group(s) in the model.  Buttons for navigating
+the wizard are included on each page.
 
-  require 'enumerated_attribute'
-  
-  class Tractor
-    enumerated_attribute :gear, %w(reverse neutral first second over_drive)
+You can view a wizardly controller's configuration by using the wizardly:config
+rake task.  First you'll need to install it if you already have not
+
+  ./script/generate wizardly_app
+
+Then you can call the rake task for any controller configured with the 
+'act_wizardly_for' macro
+
+  rake wizardly:config name=signup
+
+Substitute the name of any wizardly controller for 'signup'.
+
+
+=== Completing and Canceling
+
+Once a user has entered a wizard, there are two ways they can leave, either by
+completing or canceling the wizard.
+
+The above example is pretty simple.  In fact, no redirects have been defined for
+completing or canceling the wizard in the above example so the wizardly controller
+uses the HTTP_REFERER for both cases.  What if there is no referer?  The controller
+raises a RedirectNotDefined error.  Let's remedy this problem with some options
+in the macro.
+
+  class SignupController < ActionController::Base
+    act_wizardly_for :user, :completed=>'/main/finished', 
+      :canceled=>'/main/canceled'
+  end
+
+Now whether the user completes or cancels the wizard, the controller knows
+how to redirect.  Alternately, if you want to redirect to the same page 
+for both cases
+
+  class SignupController < ActionController::Base
+    act_wizardly_for :user, :redirect=>'/main'
+  end
+
+==== Other options
+
+Here's a list of options you can use in the macro
+
+  :completed => '/main/finished'
+  :canceled => {:controller=>'main', :action=>'canceled'}
+  :skip => {true|false}
+  :mask_fields => [:password, :password_confirmation] (by default)
+
+The :skip option tells the scaffold helpers to include or exclude a skip button on every page.  
+The :mask_fields options tells the scaffold generator which fields are html 'password' fields.
+
+=== Buttons
+
+The wizardly controller defines five default button functions: next, back, skip,
+cancel, and finish.  All but :skip are used in the scaffolding by default.  You
+can add :skip functionality to all pages by adding an option to the macro
+
+  class SignupController < ActionController::Base
+    act_wizardly_for :user, :redirect=>'/main', :skip=>true
+  end
+
+You can create, customize and change buttons for any controller and any page. 
+See the Advanced Configuration section.
+
+
+=== Callbacks
+
+The wizard macro 'act_wizardly_for' creates controller actions for each page.  
+The process for each page is conventional, but hooks (or callbacks) are available
+for the developer to change the processing.  Here's an example.  Say our model
+declares a :step4 validation_group with :username, :password, and 
+:password_confirmation fields.  We'd like to handle this step specifically.
+
+  class SignupController < ActionController::Base
+    act_wizardly_for :user, :redirect=>'/main'
+
+    def on_step4_page_errors
+      #clear the password field if errors
+      @user[:password] = ''
+      @user[:password_confirmation] = ''
+    end
+  end
+
+The above callback is only called if :step4 does not validate according to its
+validation_group.  
+
+Every page has a set of callbacks.  Here's the list for our :step1 page.
+
+  def on_get_step1_page; end    # called just before rendering the GET action
+  def on_step1_page_errors; end # called just before rendering with errors
+  def on_step1_page_next; end   
+  def on_step1_page_back; end
+  def on_step1_page_cancel; end
+  def on_step1_page_finish; end
+  def on_step1_page_skip; end
+
+Each callback is defined for the controller object, thus giving it access to all
+controller variables and methods just as any other action method.  Each callback
+has access to the model through an instance variable using the model's name.  So
+for instance if our model is :user, the instance variable is '@user'.  Each 
+wizard page action also defines a @title, @description and @step instance variable.
+These are primarily used for scaffolding.  The @step holds the name of the current
+validation group, ie. :step1, step2, ... in our examples.
+
+Notice the last five callbacks are related to the default wizard buttons.  Each
+callback gives the developer a chance to intervene before the impending render or 
+redirect caused by a button click in the view.  
+
+Important: Method names for button callbacks will change if you change the name
+of the button.  For general use, this is not an issue.  See the Advanced Configuration section.
+
+=== Rendering Callback
+
+For anyone needing to handle rendering in a special way, wizardly provides a render
+call back for this.
+
+  class SignupController < ActionController::Base
+    act_wizardly_for :user, :redirect=>'/main'
     
-    def initialize
-      @gear = :neutral
+    def render_wizard_page
+      respond_to do |format|
+        format.html
+        format.xml { render_xml(@step) }
+      end
     end
-  end
-
-Notice the plugin +enumerated_attribute+ is required at the top of the code.  
-The +require+ line must be added at least once at some point in the code.  
-It is not included in subsequent examples.
-
-The above code uses +enumerated_attribute+ to define an attribute named 'gear' with five enumeration values.  
-In general, +enumerated_attribute+ takes three parameters: the name of the attribute, an array of 
-enumeration values (either symbols or strings), and an optional hash of options (not shown above).  The complete 
-form of +enumerated_attribute+ looks like this:
-
-  enumerated_attribute :name, array_of_enumerations, hash_of_options
-  
-Defining the attribute :gear has done a number things.  
-It has generated an instance variable '@gear', read/write accessors for the 
-attribute and support methods
-for the enumeration, such as incrementor and decrementor methods.  These methods are 
-demonstrated below using the Tractor class above:
-
-  Tractor.instance_methods(false)
-  # =>["gear", "gear=", "gears", "gear_next", "gear_previous", ...
-
-  t = Tractor.new
-  t.gear                            # => :neutral
-  t.gear = :reverse                 # => :reverse
-  t.gear                            # => :reverse
-  t.gear = :third
-  # => ArgumentError: 'third' is not an enumerated value for gear attribute
-  
-  t.gears                           # => [:reverse, :neutral, :first, :second, :over_drive]
-  t.gear_next                       # => :neutral
-  t.gear_previous                   # => :reverse
-  t.gear_previous                   # => :over_drive
-  
-The plugin has defined +gear+ and gear= accessors for the attribute.  They can be used 
-to set the attribute to one of the defined enumeration values.  Attempting to set the 
-attribute to something besides a defined enumeration value raises an ArgumentError.
-
-+gear_next+ and +gear_previous+ are incrementors and decrementors of the attribute.  
-The increment order is based on the order of the enumeration values in the attribute definition.
-Both the incrementor and decrementor will wrap when reaching the boundary elements 
-of the enumeration array.  For example:
-
-  t.gear = :second
-  t.gear_next                       # => :over_drive
-  t.gear_next                       # => :reverse
-
-
-==== Dynamically-Generating Predicates Methods
-
-Predicate methods are methods that query the state of the attribute, 
-for instance, gear_is_neutral? is a predicate method that returns 'true' if 
-the gear attribute is in the :neutral state.  
-By default, predicate methods are not predefined, instead, they are dynamically generated.  
-The plugin will evaluate and respond to methods adhering to a format that it 
-can associate with an attribute name and one of the attribute's enumeration values.  
-+enumerated_attribute+ recognizes predicate methods of the following format:
-
-  {attribute name}_{anything}_{enumeration value}?
-
-The predicate method must satisfy three requirements:  it must begin with the name 
-of the attribute,
-it must end with a question mark, and the question mark must be preceded with
-a valid enumeration value (all connected by underscores without colons).  
-So we can write the following two predicate methods without any prior definition and 
-the plugin will recognize, define and respond to them as demonstrated here:
-
-  t.gear= :neutral
-  t.gear_is_in_neutral?             # => true
-  t.gear_is_in_reverse?             # => false
-
-The '_is_in_' part of the methods above is merely semantic but enhances 
-readability.  The contents of the {anything} portion is completely
-at the discretion of the developer.  However, there is one twist.  
-The evaluation of a predicate method can be negated 
-by including 'not' in the the middle {anything} section, such as here:
-
-  t.gear_is_not_in_neutral?         # => false
-  t.gear_is_not_in_reverse?         # => true
-  
-Basically, the shortest acceptable form of a predicate method is:
-
-  t.gear_neutral?                   # => true
-  t.gear_not_neutral?               # => false
-
-
-==== Abbreviating Predicate Methods
-
-In the case that an enumeration value is associated with only one 
-attribute, the attribute name can be left out of the predicate method name.
-The plugin will infer the attribute from the enum value in the method name.
-The abbreviate format can be written like this:
-
-  {anything}{_}{enumeration value}?
-	
-And results in the following possibilities:
-
-  t.gear = :neutral
-  t.neutral?                        # => true
-  t.is_neutral?                     # => true
-  t.not_neutral?                    # => false
-  t.is_not_neutral?                 # => false
-	
-Calling the abbreviated form of the method containing an enumeration value
-belonging to two or more attributes throws an AmbiguousMethod error.
-
-
-==== Initializing Attributes
-
-The plugin provides a few ways to eliminate setting the initial value of the attribute in
-the +initialize+ method.  Two ways are demonstrated here:
-
-  class Tractor
-    enum_attr :gear, %w(reverse ^neutral first second third)
-    enum_attr :front_light, %w(off low high), :init=>:off
-  end
-  
-  t = Tractor.new
-  t.gear                            # => :neutral
-  t.front_light                     # => :off
-
-*Note* +enumerated_attribute+ can be abbreviated to +enum_attr+.  The abbreviated
-form will be used in subsequent examples.
-
-The first and simplest way involves designating the initial value by 
-prepending a carot '^' to one of the enumeration values in the definition.  
-The plugin recognizes that the gear attribute is to be initialized to :neutral.  
-Alternatively, the :init option can be used to indicate the initial value of the attribute.
-
-
-==== Setting Attributes to nil
-
-By default, the attribute setter does not allow nils unless the :nil option is set to true
-in the definition as demonstrated here:
-
-  class Tractor 
-    enum_attr :plow, %w(^up down), :nil=>true
-  end
-  
-  t = Tractor.new
-  t.plow                            # => :up
-  t.plow_nil?                       # => :false
-  t.plow = nil                      # => nil
-  t.plow_is_nil?                    # => true
-  t.plow_is_not_nil?                # => false
-  
-Regardless of the :nil option setting, the plugin can dynamically recognize and define
-predicate methods for testing 'nil' values.
-
-
-==== Changing Method Names
-
-The plugin provides options for changing the method names of the enumeration accessor, incrementor
-and decrementor (ie, +gears+, +gear_next+, +gear_previous+):
-
-  class Tractor
-    enum_attr :lights, %w(^off low high), :plural=>:lights_values, 
-        :inc=>'lights_inc', :dec=>'lights_dec'
-  end
-  
-  t = Tractor.new
-  t.lights_values                   # => [:off, :low, :high]
-  t.lights_inc                      # => :low
-  t.lights_dec                      # => :off
-  
-By default, the plugin uses the plural of the attribute for the accessor method name of the enumeration 
-values.  The pluralization uses a simple algorithm which does not support irregular forms.  In 
-the case of 'lights' as an 
-attribute, the default pluralization does not work, so the accessor can be changed using 
-the :plural option.  Likewise, the decrementor
-and incrementor have options :decrementor and :incrementor, or :inc and :dec, for changing
-their method names.
-
-
-=== Defining Other Methods
-
-In the case that other methods are required to support the attribute, 
-the plugin provides a short-hand for defining these methods in the 
-+enumerated_attribute+ block.
-
-  class Tractor
-    enum_attr :gear, %w(reverse ^neutral first second over_drive) do
-      parked? :neutral
-      driving? [:first, :second, :over_drive]
-    end
-  end
-
-  t = Tractor.new
-  t.parked?                         # => true
-  t.driving?                        # => false
-  
-Two predicate methods are defined for the 'gear' attribute in the above example using 
-the plugin's short-hand.    
-The first method, parked?, defines a method which evaluates 
-the code {@gear == :neutral}.  The second method, driving?, evaluates
-to true if the attribute is set to one of the enumeration values defined in the array 
-[:first, :second, :over_drive].
-
-The same short-hand can be used to define methods where the attribute 'is not' equal to the
-indicated value or 'is not' included in the array of values.
-
-  class Tractor
-    enum_attr :gear, %w(reverse ^neutral first second over_drive) do
-      not_parked? is_not :neutral
-      not_driving? is_not [:first, :second, :over_drive]
-    end
-  end
-
-
-==== Defining Other Methods With Blocks
-
-For predicate methods requiring fancier logic,
-a block can be used to define the method body.
-
-  class Tractor
-    enum_attr :gear, %w(reverse ^neutral first second over_drive) do
-      parked? :neutral
-      driving? [:first, :second, :over_drive]
-    end
-    enum_attr :plow, %w(^up down), :plural=>:plow_values do
-      plowing? { self.gear_is_in_first? && @plow == :down }
-    end
-  end
-
-Here, a method plowing? is true if the gear attribute equates to :first 
-and the plow attribute is set to :down.  There is
-no short-hand for the block.  The code must be complete and evaluate in 
-the context of the instance.
-
-Method definitions are not limited to predicate methods.  Other methods 
-can be defined to manipulate the attributes.  Here, two methods are defined acting
-as bounded incrementor and decrementor of the gear attribute.
-
-  class Tractor
-    enum_attr :gear, %w(reverse ^neutral first second over_drive) do
-      parked? :neutral
-      driving? [:first, :second, :over_drive]
-      upshift { self.gear_is_in_over_drive? ? self.gear : self.gear_next }
-      downshift { self.driving? ? self.gear_previous : self.gear }      
-    end
-  end
-  
-  t = Tractor.new
-  t.gear                            # => :neutral
-  10.times { t.upshift }
-  t.gear                            # => :over_drive
-  10.times { t.downshift }
-  t.gear                            # => :neutral
-  
-Methods +upshift+ and +downshift+ use the automatically generated 
-incrementor and decrementor as
-well as a couple predicate methods.  +upshift+ increments the gear attribute until
-it reaches over_drive and does not allow a wrap around.  +downshift+ decrements
-until the attribute reaches neutral.
-
-=== Integration
-
-==== ActiveRecord integration
-
-The plugin can be used with ActiveRecord.  Enumerated attributes may be declared on 
-column attributes or as independent enumerations.  Declaring an enumerated attribute
-on a column attribute will enforce the enumeration using symbols.  The 
-enumerated column attribute must be declared as a STRING in the database schema.  
-The enumerated attribute will be stored as a string but retrieved in code as a symbol.  The 
-enumeration functionality is consistent across integrations.
-
-  require 'enumerated_attribute'
-  require 'active_record'
-	
-  class Order < ActiveRecord::Base	
-    enum_attr :status, %w(^hold, processing, delayed, shipped)
-    enum_attr :billing_status, 
-      %w(^unauthorized, authorized, auth_failed, captured, capture_failed, closed)
-  end
-	
-  o = Order.new
-  o.status                          # => :hold
-  o.billing_status                  # => :unauthorized
-  o.save!
-	
-  o = Order.new(:invoice=>'43556334-W84', :status=>:processing, :billing=>:authorized)
-  o.save!
-  o.status                          # => :processing
-  o.invoice                         # => "43556334-W84"
-	
-
-=== Implementation Notes
-
-==== New and Method_missing methods
-
-The plugin chains both the 'new' and the 'method_missing' methods.  Any 'new' and 'method_missing' 
-implementations in the same class declaring an enumerated_attribute should come before the 
-declaration; otherwise, the 'new' and 'method_missing' implementations must chain in order to avoid 
-overwriting the plugin's methods.  The best approach is shown here:
-
-  class Soup
-    def self.new(*args)
+    
+    def render_xml(step)
       ...
     end
-
-    private
-    def method_missing(methId, *args, &blk)
-      ...
-    end
-		
-    enum_attr temp:, %w(cold warm hot boiling)
   end
 
+== Advanced Configuration 
+
+To be provided 
 
 == Testing
 
-The plugin uses RSpec for testing.  Make sure you have the RSpec gem installed:
+Testing uses RSpec and Webrat.  Make sure you have those gems installed.  Then 
+to test the development code run the following:
 
-  gem install rspec
-  
-To test the plugin for regular ruby objects, run:
-
-  rake spec
-	
-Testing ActiveRecord integration requires the install of Sqlite3 and the 
-sqlite3-ruby gem.  To test ActiveRecord, run:
-
-  rake spec:active_record
-	
-To test all specs:
-
-  rake spec:all
+  rake spec:all  
 
 
 == Dependencies
 
+* validation_group is currently integrated (plugin not required)
 * ActiveRecord
-* Sqlite3 and sqlite3-ruby gem (for testing)
+* ActionController

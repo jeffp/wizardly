@@ -10,3 +10,4 @@ tmp
 vendor
 rails_generators
 lib/tasks
+TODO.rdoc

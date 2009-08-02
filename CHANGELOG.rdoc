@@ -26,3 +26,8 @@
 * integrated validation_groups until later
 * renamed to act_wizardly_for
 
+== 0.1.0 /2009-08-02
+
+* README.rdoc initial version
+* gem version 0.1.0
+

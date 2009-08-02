@@ -1,6 +1,6 @@
 require 'wizardly/wizard/configuration'
 
-module Wizard
+module Wizardly
   class WizardlyError < StandardError; end
   class ModelNotFoundError < WizardlyError; end
   class ValidationGroupError < WizardlyError; end
