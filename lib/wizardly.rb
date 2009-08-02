@@ -1,4 +1,4 @@
-require 'wizardly/validation_group'
+require 'validation_group'
 require 'wizardly/action_controller'
 
 module Wizardly

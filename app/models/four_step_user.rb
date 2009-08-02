@@ -1,3 +1,4 @@
+require 'validation_group'
 class FourStepUser < User
   
   validation_group :init, :fields=>[:first_name, :last_name]

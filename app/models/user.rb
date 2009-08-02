@@ -1,3 +1,4 @@
+require 'validation_group'
 class User < ActiveRecord::Base
 =begin
       t.string :first_name
@@ -15,8 +16,8 @@ class User < ActiveRecord::Base
   #validates_numercality_of :age
   #validates_uniqueness_of :username
 
-  wizardly_page :init, :fields=>[:first_name, :last_name]
-  wizardly_page :second, :fields=>[:age, :gender, :programmer, :status]
-  wizardly_page :finish, :fields=>[:username, :password, :password_confirmation]
+  validation_group :init, :fields=>[:first_name, :last_name]
+  validation_group :second, :fields=>[:age, :gender, :programmer, :status]
+  validation_group :finish, :fields=>[:username, :password, :password_confirmation]
 
 end

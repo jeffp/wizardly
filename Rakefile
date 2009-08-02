@@ -40,7 +40,7 @@ require 'spec/rake/spectask'
 
 namespace :spec do
   desc "Run all specs"
-  task :all=>[:macro, :gen, :scaffold, :callbacks]
+  task :all=>[:macro, :gen, :scaffold] #, :callback]
   desc "Test the MacroController"
   Spec::Rake::SpecTask.new(:macro) do |t|
     t.spec_files = FileList['spec/integrations/macro_spec.rb']

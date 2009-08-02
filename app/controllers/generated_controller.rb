@@ -6,6 +6,35 @@ class GeneratedController < ApplicationController
   before_filter :guard_entry
 
   
+  # finish action method
+  def finish
+    @step = :finish
+    @wizard = wizard_config
+    @title = 'Finish'
+    @description = ''
+    h = (flash[:wizard_model]||{}).merge(params[:user] || {}) 
+    @user = User.new(h)
+    flash[:wizard_model] = h
+    button_id = check_action_for_button
+    return if performed?
+    if request.get?
+      return if callback_performs_action?(:on_get_finish_page)
+      render_wizard_page
+      return
+    end
+
+    @user.enable_validation_group :finish
+    unless @user.valid?
+      return if callback_performs_action?(:on_finish_page_errors)
+      render_wizard_page
+      return
+    end
+
+    return if _on_wizard_finish
+    redirect_to '/main/finished'
+  end
+
+
   # init action method
   def init
     @step = :init
@@ -34,35 +63,6 @@ class GeneratedController < ApplicationController
     session[:progression] = [:init]
     return if callback_performs_action?(:on_init_page_next)
     redirect_to :action=>:second
-  end
-
-
-  # finish action method
-  def finish
-    @step = :finish
-    @wizard = wizard_config
-    @title = 'Finish'
-    @description = ''
-    h = (flash[:wizard_model]||{}).merge(params[:user] || {}) 
-    @user = User.new(h)
-    flash[:wizard_model] = h
-    button_id = check_action_for_button
-    return if performed?
-    if request.get?
-      return if callback_performs_action?(:on_get_finish_page)
-      render_wizard_page
-      return
-    end
-
-    @user.enable_validation_group :finish
-    unless @user.valid?
-      return if callback_performs_action?(:on_finish_page_errors)
-      render_wizard_page
-      return
-    end
-
-    return if _on_wizard_finish
-    redirect_to '/main/finished'
   end
 
 
@@ -105,8 +105,7 @@ class GeneratedController < ApplicationController
   def _on_wizard_finish
     @user.save_without_validation!
     flash.discard(:wizard_model)
-    initial_referer = reset_wizard_session_vars 
-    return redirect_to(wizard_config.completed_redirect || initial_referer)
+    _wizard_final_redirect_to(:completed)
   end
   def _on_wizard_skip
     redirect_to :action=>wizard_config.next_page(@step)
@@ -117,12 +116,16 @@ class GeneratedController < ApplicationController
     true
   end
   def _on_wizard_cancel
-    initial_referer = reset_wizard_session_vars
-    return (false) unless (wizard_config.canceled_redirect || initial_referer) 
-    redirect_to(wizard_config.canceled_redirect || initial_referer)
+    _wizard_final_redirect_to(:canceled)
     true
-  end    
-  hide_action :_on_wizard_finish, :_on_wizard_skip, :_on_wizard_back, :_on_wizard_cancel
+  end
+  def _wizard_final_redirect_to(which_redirect) 
+    initial_referer = reset_wizard_session_vars
+    redir = (which_redirect == :completed ? wizard_config.completed_redirect : wizard_config.canceled_redirect) || initial_referer
+    return redirect_to(redir) if redir
+    raise Wizardly::RedirectNotDefinedError, "No redirect was defined for completion or canceling the wizard.  Use :completed and :canceled options to define redirects.", caller
+  end
+  hide_action :_on_wizard_finish, :_on_wizard_skip, :_on_wizard_back, :_on_wizard_cancel, :_wizard_final_redirect_to
 
 
     protected
