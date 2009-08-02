@@ -9,5 +9,5 @@ nbproject
 tmp
 vendor
 rails_generators
-lib/tasks
+lib/tasks/*
 TODO.rdoc
