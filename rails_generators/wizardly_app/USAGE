@@ -1,0 +1,6 @@
+Prepares a rails application to use wizardly gem
+
+Moves the wizardly.rake file in to lib/tasks directory
+
+
+
