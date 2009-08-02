@@ -1,0 +1,412 @@
+= wizardly
+
++wizardly+ produces a working wizard from any ActiveRecord model in three steps.
+
+== Resources
+
+Development
+
+* http://github.com/jeffp/wizardly
+
+Source
+
+* git://github.com/jeffp/wizardly.git
+
+Install
+
+* sudo gem install jeffp-wizardly --source=http://gems.github.com
+	
+== Description
+
+Wizards are a common and useful pattern in programming.  Typically, in Ruby, 
+enumerated attributes are implemented with strings, symbols or constants.  Often the 
+developer is burdened with repeatedly defining common methods in support of each
+attribute.  Such repetition coding unnecessarily increases
+costs and wastes time.
+
++enumerated_attribute+ simplifies the definition of enumerated attributes by emphasizing 
+convention and DRYing the implementation.  Repetitive code such as initializers, accessors, 
+predicate and enumeration methods are automatically generated, resulting in better 
+encapsulation, quicker implementation and cleaner code.
+
+Features include:
+* Short and simple definition
+* Auto-defined attribute methods
+* Dynamically-generated predicate methods
+* Attribute initialization
+* Method definition short-hand (DSL)
+* ActiveRecord integration
+
+== Example
+
+Create a working controller wizard for any model in 3 steps.  Here's how:
+
+Step 1: Define validation groups for your model.
+
+  require 'validation_group'
+  class User < ActiveRecord::Base    
+    validation_group :step1, :fields=>[:first_name, :last_name]
+    ...
+  end
+
+Step 2: Tell your controller to act 'wizardly'.
+
+  require 'wizardly'
+  class SignupController < ActionController::Base
+    wizard_for_model :user
+  end
+
+Step 3: Generate 'wizardly' views for your controller.
+
+  ./script/generate wizardly_scaffold :signup
+
+You are ready to go.
+
+
+== Usage
+
+=== Defining the Attribute
+
+Defining an enumerated attribute is as simple as this:
+
+  require 'enumerated_attribute'
+  
+  class Tractor
+    enumerated_attribute :gear, %w(reverse neutral first second over_drive)
+    
+    def initialize
+      @gear = :neutral
+    end
+  end
+
+Notice the plugin +enumerated_attribute+ is required at the top of the code.  
+The +require+ line must be added at least once at some point in the code.  
+It is not included in subsequent examples.
+
+The above code uses +enumerated_attribute+ to define an attribute named 'gear' with five enumeration values.  
+In general, +enumerated_attribute+ takes three parameters: the name of the attribute, an array of 
+enumeration values (either symbols or strings), and an optional hash of options (not shown above).  The complete 
+form of +enumerated_attribute+ looks like this:
+
+  enumerated_attribute :name, array_of_enumerations, hash_of_options
+  
+Defining the attribute :gear has done a number things.  
+It has generated an instance variable '@gear', read/write accessors for the 
+attribute and support methods
+for the enumeration, such as incrementor and decrementor methods.  These methods are 
+demonstrated below using the Tractor class above:
+
+  Tractor.instance_methods(false)
+  # =>["gear", "gear=", "gears", "gear_next", "gear_previous", ...
+
+  t = Tractor.new
+  t.gear                            # => :neutral
+  t.gear = :reverse                 # => :reverse
+  t.gear                            # => :reverse
+  t.gear = :third
+  # => ArgumentError: 'third' is not an enumerated value for gear attribute
+  
+  t.gears                           # => [:reverse, :neutral, :first, :second, :over_drive]
+  t.gear_next                       # => :neutral
+  t.gear_previous                   # => :reverse
+  t.gear_previous                   # => :over_drive
+  
+The plugin has defined +gear+ and gear= accessors for the attribute.  They can be used 
+to set the attribute to one of the defined enumeration values.  Attempting to set the 
+attribute to something besides a defined enumeration value raises an ArgumentError.
+
++gear_next+ and +gear_previous+ are incrementors and decrementors of the attribute.  
+The increment order is based on the order of the enumeration values in the attribute definition.
+Both the incrementor and decrementor will wrap when reaching the boundary elements 
+of the enumeration array.  For example:
+
+  t.gear = :second
+  t.gear_next                       # => :over_drive
+  t.gear_next                       # => :reverse
+
+
+==== Dynamically-Generating Predicates Methods
+
+Predicate methods are methods that query the state of the attribute, 
+for instance, gear_is_neutral? is a predicate method that returns 'true' if 
+the gear attribute is in the :neutral state.  
+By default, predicate methods are not predefined, instead, they are dynamically generated.  
+The plugin will evaluate and respond to methods adhering to a format that it 
+can associate with an attribute name and one of the attribute's enumeration values.  
++enumerated_attribute+ recognizes predicate methods of the following format:
+
+  {attribute name}_{anything}_{enumeration value}?
+
+The predicate method must satisfy three requirements:  it must begin with the name 
+of the attribute,
+it must end with a question mark, and the question mark must be preceded with
+a valid enumeration value (all connected by underscores without colons).  
+So we can write the following two predicate methods without any prior definition and 
+the plugin will recognize, define and respond to them as demonstrated here:
+
+  t.gear= :neutral
+  t.gear_is_in_neutral?             # => true
+  t.gear_is_in_reverse?             # => false
+
+The '_is_in_' part of the methods above is merely semantic but enhances 
+readability.  The contents of the {anything} portion is completely
+at the discretion of the developer.  However, there is one twist.  
+The evaluation of a predicate method can be negated 
+by including 'not' in the the middle {anything} section, such as here:
+
+  t.gear_is_not_in_neutral?         # => false
+  t.gear_is_not_in_reverse?         # => true
+  
+Basically, the shortest acceptable form of a predicate method is:
+
+  t.gear_neutral?                   # => true
+  t.gear_not_neutral?               # => false
+
+
+==== Abbreviating Predicate Methods
+
+In the case that an enumeration value is associated with only one 
+attribute, the attribute name can be left out of the predicate method name.
+The plugin will infer the attribute from the enum value in the method name.
+The abbreviate format can be written like this:
+
+  {anything}{_}{enumeration value}?
+	
+And results in the following possibilities:
+
+  t.gear = :neutral
+  t.neutral?                        # => true
+  t.is_neutral?                     # => true
+  t.not_neutral?                    # => false
+  t.is_not_neutral?                 # => false
+	
+Calling the abbreviated form of the method containing an enumeration value
+belonging to two or more attributes throws an AmbiguousMethod error.
+
+
+==== Initializing Attributes
+
+The plugin provides a few ways to eliminate setting the initial value of the attribute in
+the +initialize+ method.  Two ways are demonstrated here:
+
+  class Tractor
+    enum_attr :gear, %w(reverse ^neutral first second third)
+    enum_attr :front_light, %w(off low high), :init=>:off
+  end
+  
+  t = Tractor.new
+  t.gear                            # => :neutral
+  t.front_light                     # => :off
+
+*Note* +enumerated_attribute+ can be abbreviated to +enum_attr+.  The abbreviated
+form will be used in subsequent examples.
+
+The first and simplest way involves designating the initial value by 
+prepending a carot '^' to one of the enumeration values in the definition.  
+The plugin recognizes that the gear attribute is to be initialized to :neutral.  
+Alternatively, the :init option can be used to indicate the initial value of the attribute.
+
+
+==== Setting Attributes to nil
+
+By default, the attribute setter does not allow nils unless the :nil option is set to true
+in the definition as demonstrated here:
+
+  class Tractor 
+    enum_attr :plow, %w(^up down), :nil=>true
+  end
+  
+  t = Tractor.new
+  t.plow                            # => :up
+  t.plow_nil?                       # => :false
+  t.plow = nil                      # => nil
+  t.plow_is_nil?                    # => true
+  t.plow_is_not_nil?                # => false
+  
+Regardless of the :nil option setting, the plugin can dynamically recognize and define
+predicate methods for testing 'nil' values.
+
+
+==== Changing Method Names
+
+The plugin provides options for changing the method names of the enumeration accessor, incrementor
+and decrementor (ie, +gears+, +gear_next+, +gear_previous+):
+
+  class Tractor
+    enum_attr :lights, %w(^off low high), :plural=>:lights_values, 
+        :inc=>'lights_inc', :dec=>'lights_dec'
+  end
+  
+  t = Tractor.new
+  t.lights_values                   # => [:off, :low, :high]
+  t.lights_inc                      # => :low
+  t.lights_dec                      # => :off
+  
+By default, the plugin uses the plural of the attribute for the accessor method name of the enumeration 
+values.  The pluralization uses a simple algorithm which does not support irregular forms.  In 
+the case of 'lights' as an 
+attribute, the default pluralization does not work, so the accessor can be changed using 
+the :plural option.  Likewise, the decrementor
+and incrementor have options :decrementor and :incrementor, or :inc and :dec, for changing
+their method names.
+
+
+=== Defining Other Methods
+
+In the case that other methods are required to support the attribute, 
+the plugin provides a short-hand for defining these methods in the 
++enumerated_attribute+ block.
+
+  class Tractor
+    enum_attr :gear, %w(reverse ^neutral first second over_drive) do
+      parked? :neutral
+      driving? [:first, :second, :over_drive]
+    end
+  end
+
+  t = Tractor.new
+  t.parked?                         # => true
+  t.driving?                        # => false
+  
+Two predicate methods are defined for the 'gear' attribute in the above example using 
+the plugin's short-hand.    
+The first method, parked?, defines a method which evaluates 
+the code {@gear == :neutral}.  The second method, driving?, evaluates
+to true if the attribute is set to one of the enumeration values defined in the array 
+[:first, :second, :over_drive].
+
+The same short-hand can be used to define methods where the attribute 'is not' equal to the
+indicated value or 'is not' included in the array of values.
+
+  class Tractor
+    enum_attr :gear, %w(reverse ^neutral first second over_drive) do
+      not_parked? is_not :neutral
+      not_driving? is_not [:first, :second, :over_drive]
+    end
+  end
+
+
+==== Defining Other Methods With Blocks
+
+For predicate methods requiring fancier logic,
+a block can be used to define the method body.
+
+  class Tractor
+    enum_attr :gear, %w(reverse ^neutral first second over_drive) do
+      parked? :neutral
+      driving? [:first, :second, :over_drive]
+    end
+    enum_attr :plow, %w(^up down), :plural=>:plow_values do
+      plowing? { self.gear_is_in_first? && @plow == :down }
+    end
+  end
+
+Here, a method plowing? is true if the gear attribute equates to :first 
+and the plow attribute is set to :down.  There is
+no short-hand for the block.  The code must be complete and evaluate in 
+the context of the instance.
+
+Method definitions are not limited to predicate methods.  Other methods 
+can be defined to manipulate the attributes.  Here, two methods are defined acting
+as bounded incrementor and decrementor of the gear attribute.
+
+  class Tractor
+    enum_attr :gear, %w(reverse ^neutral first second over_drive) do
+      parked? :neutral
+      driving? [:first, :second, :over_drive]
+      upshift { self.gear_is_in_over_drive? ? self.gear : self.gear_next }
+      downshift { self.driving? ? self.gear_previous : self.gear }      
+    end
+  end
+  
+  t = Tractor.new
+  t.gear                            # => :neutral
+  10.times { t.upshift }
+  t.gear                            # => :over_drive
+  10.times { t.downshift }
+  t.gear                            # => :neutral
+  
+Methods +upshift+ and +downshift+ use the automatically generated 
+incrementor and decrementor as
+well as a couple predicate methods.  +upshift+ increments the gear attribute until
+it reaches over_drive and does not allow a wrap around.  +downshift+ decrements
+until the attribute reaches neutral.
+
+=== Integration
+
+==== ActiveRecord integration
+
+The plugin can be used with ActiveRecord.  Enumerated attributes may be declared on 
+column attributes or as independent enumerations.  Declaring an enumerated attribute
+on a column attribute will enforce the enumeration using symbols.  The 
+enumerated column attribute must be declared as a STRING in the database schema.  
+The enumerated attribute will be stored as a string but retrieved in code as a symbol.  The 
+enumeration functionality is consistent across integrations.
+
+  require 'enumerated_attribute'
+  require 'active_record'
+	
+  class Order < ActiveRecord::Base	
+    enum_attr :status, %w(^hold, processing, delayed, shipped)
+    enum_attr :billing_status, 
+      %w(^unauthorized, authorized, auth_failed, captured, capture_failed, closed)
+  end
+	
+  o = Order.new
+  o.status                          # => :hold
+  o.billing_status                  # => :unauthorized
+  o.save!
+	
+  o = Order.new(:invoice=>'43556334-W84', :status=>:processing, :billing=>:authorized)
+  o.save!
+  o.status                          # => :processing
+  o.invoice                         # => "43556334-W84"
+	
+
+=== Implementation Notes
+
+==== New and Method_missing methods
+
+The plugin chains both the 'new' and the 'method_missing' methods.  Any 'new' and 'method_missing' 
+implementations in the same class declaring an enumerated_attribute should come before the 
+declaration; otherwise, the 'new' and 'method_missing' implementations must chain in order to avoid 
+overwriting the plugin's methods.  The best approach is shown here:
+
+  class Soup
+    def self.new(*args)
+      ...
+    end
+
+    private
+    def method_missing(methId, *args, &blk)
+      ...
+    end
+		
+    enum_attr temp:, %w(cold warm hot boiling)
+  end
+
+
+== Testing
+
+The plugin uses RSpec for testing.  Make sure you have the RSpec gem installed:
+
+  gem install rspec
+  
+To test the plugin for regular ruby objects, run:
+
+  rake spec
+	
+Testing ActiveRecord integration requires the install of Sqlite3 and the 
+sqlite3-ruby gem.  To test ActiveRecord, run:
+
+  rake spec:active_record
+	
+To test all specs:
+
+  rake spec:all
+
+
+== Dependencies
+
+* ActiveRecord
+* Sqlite3 and sqlite3-ruby gem (for testing)

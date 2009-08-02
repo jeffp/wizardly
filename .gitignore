@@ -1,0 +1,12 @@
+.DS_Store
+**/*.log
+pkg
+rdoc
+coverage
+doc
+log
+nbproject
+tmp
+vendor
+rails_generators
+lib/tasks

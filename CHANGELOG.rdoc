@@ -1,0 +1,28 @@
+== master
+
+== 0.0.1 / 2009-07-28
+
+* Created wizard implementation for submit_tag buttons
+* Created WizardConfig, WizardPage and WizardButton
+* Added wizard functions to validation_group (by alex kira)
+* Created validation_group gem
+* Added Implementation, Macro, Generated Controllers
+* Refactored spec integration tests for the three controllers
+* Created Wizardized_controller generator
+
+== 0.0.2 / 2009-07-29
+
+* script/generate wizardly_scaffold controller_name
+
+== 0.0.3 / 2009-07-30
+
+* added render_wizard_page for respond_to handling
+* added wizard button and page callbacks
+* tests for callbacks
+
+== 0.0.3 / 2009-08-01
+
+* refactored into library
+* integrated validation_groups until later
+* renamed to act_wizardly_for
+

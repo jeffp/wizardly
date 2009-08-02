@@ -1,0 +1,7 @@
+<div>
+  <% form_for :user  do |f| -%>
+    <div>first name: <%= f.text_field :first_name %> <%= error_message_on :user, :first_name, {:prepend_text=>'*'} %></div>
+    <div>last name: <%= f.text_field :last_name %> <%= error_message_on :user, :last_name, {:prepend_text=>'*'} %></div>
+    <div><%= wizardly_submit %></div>
+  <% end -%>
+</div>

@@ -1,0 +1,10 @@
+<div>
+  <% form_for :user do |f| -%>
+    <div>age: <%= f.text_field :age %> <%= error_message_on :user, :age, {:prepend_text=>'*'} %></div>
+    <div>gender: <%= f.text_field :gender %> <%= error_message_on :user, :gender, {:prepend_text=>'*'} %></div>
+		<div>programmer: <%= f.check_box :programmer %> <%= error_message_on :user, :programmer, {:prepend_text=>'*'} %></div>
+		<div>status: <%= f.text_field :status %> <%=error_message_on :user, :status, {:prepend_text=>'*'} %></div>
+    <div><%= submit_tag 'next' %>&nbsp;<%= submit_tag 'back' %>&nbsp;<%= submit_tag 'skip' %>&nbsp;<%= submit_tag 'finish' %>&nbsp;<%= submit_tag 'cancel' %></div>
+  <% end -%>
+	
+</div>
