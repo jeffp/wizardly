@@ -14,7 +14,7 @@ require 'fileutils'
 
 spec = Gem::Specification.new do |s|
   s.name = 'wizardly'
-  s.version = '0.1.0'
+  s.version = '0.1.1'
   s.platform = Gem::Platform::RUBY
   s.description = 'Create wizards from any model in three steps'
   s.summary = 'Produces controllers and wizard scaffolding for models with validation_groups'
@@ -23,7 +23,7 @@ spec = Gem::Specification.new do |s|
   FileUtils.rm_rf "rails_generators"
   FileUtils.mkdir "rails_generators"
   FileUtils.cp_r "lib/generators/.", "rails_generators"
-  s.files = FileList['{lib,rails_generators}/**/*'] + %w(CHANGELOG.rdoc init.rb LICENSE README.rdoc) - FileList['**/*.log','lib/generators','lib/tasks']
+  s.files = FileList['{lib,rails_generators}/**/*'] + %w(CHANGELOG.rdoc init.rb LICENSE README.rdoc) - FileList['**/*.log'] - FileList['lib/generators/**/*'] - FileList['lib/tasks/**/*']
   s.require_path = 'lib'
   s.has_rdoc = true
   #s.test_files = Dir['spec/*_spec.rb']
