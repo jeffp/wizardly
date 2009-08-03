@@ -61,7 +61,7 @@ Step 2: Tell your controller to act 'wizardly'.
 
 Step 3: Generate a 'wizardly' scaffold for your controller.
 
-  ./script/generate wizardly_scaffold :signup
+  ./script/generate wizardly_scaffold signup
 
 You are ready to go.
 

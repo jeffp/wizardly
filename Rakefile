@@ -23,7 +23,8 @@ spec = Gem::Specification.new do |s|
   FileUtils.rm_rf "rails_generators"
   FileUtils.mkdir "rails_generators"
   FileUtils.cp_r "lib/generators/.", "rails_generators"
-  s.files = FileList['{lib,rails_generators}/**/*'] + %w(CHANGELOG.rdoc init.rb LICENSE README.rdoc) - FileList['**/*.log'] - FileList['lib/generators/**/*'] - FileList['lib/tasks/**/*']
+  exclude_files = FileList['**/*.log'] + FileList['lib/generators/**/*'] + FileList['lib/tasks/**/*']
+  s.files = FileList['{lib,rails_generators}/**/*'] + %w(CHANGELOG.rdoc init.rb LICENSE README.rdoc) - exclude_files
   s.require_path = 'lib'
   s.has_rdoc = true
   #s.test_files = Dir['spec/*_spec.rb']
