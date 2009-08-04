@@ -1,4 +1,4 @@
-#require 'wizardly'
+require 'wizardly'
 
 class WizardlyScaffoldGenerator < Rails::Generator::Base
   attr_reader :wizard_config, :pages

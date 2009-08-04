@@ -1,4 +1,4 @@
-#require 'wizardly'
+require 'wizardly'
 
 class WizardlyControllerGenerator < Rails::Generator::Base
   attr_reader :controller_name, :model_name, :completed_redirect, :canceled_redirect
