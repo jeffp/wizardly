@@ -5,8 +5,8 @@ class WizardlyControllerGenerator < Rails::Generator::Base
   
   def initialize(runtime_args, runtime_options = {})
     super
-    @controller_name = @args[0].underscore
-    @model_name = @args[1].underscore
+    @controller_name = @args[0].sub(/^:/, '').underscore
+    @model_name = @args[1].sub(/^:/, '').underscore
     @completed_redirect = @args[2]
     @canceled_redirect = @args[3]
     opts = {}

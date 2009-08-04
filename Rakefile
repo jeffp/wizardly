@@ -1,4 +1,4 @@
-$: << 'lib'
+$:.unshift('lib')
 # Add your own tasks in files placed in lib/tasks ending in .rake, for example
 # lib/tasks/capistrano.rake, and they will automatically be available to Rake.
 
@@ -14,7 +14,7 @@ require 'fileutils'
 
 spec = Gem::Specification.new do |s|
   s.name = 'wizardly'
-  s.version = '0.1.3'
+  s.version = '0.1.4'
   s.platform = Gem::Platform::RUBY
   s.description = 'Create wizards from any model in three steps'
   s.summary = 'Produces controllers and wizard scaffolding for models with validation_groups'

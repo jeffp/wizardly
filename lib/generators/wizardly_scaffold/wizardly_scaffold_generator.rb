@@ -15,7 +15,7 @@ class WizardlyScaffoldGenerator < Rails::Generator::Base
   
   def initialize(runtime_args, runtime_options = {})
     super
-    name = @args[0].underscore.sub(/_controller$/, '').camelize + 'Controller'
+    name = @args[0].sub(/^:/, '').underscore.sub(/_controller$/, '').camelize + 'Controller'
     
     base_name, @controller_class_path, @controller_file_path, @controller_class_nesting, @controller_class_nesting_depth = extract_modules(name)
     @controller_class_name_without_nesting = base_name.camelize
