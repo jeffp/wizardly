@@ -1,6 +1,6 @@
 = wizardly
 
-+wizardly+ produces a functional wizard from an ActiveRecord model in three steps.
++wizardly+ creates a multi-step wizard for any ActiveRecord model in three steps.
 
 == Resources
 
@@ -14,7 +14,7 @@ Source
 
 Install
 
-* sudo gem install jeffp-wizardly --source=http://gems.github.com
+* sudo gem install jeffp-wizardly --source=http://http://gems.github.com
 	
 == Description
 
@@ -32,11 +32,15 @@ Features include:
 
 == Setup
 
-Install the wizardly gem and require the gem at the bottom of your config/environment.rb file:
+Put the following in your application's config block in config/environment.rb
 
-  require 'wizardly'
+  config.gem 'jeffp-wizardly', :lib=>'wizardly'
 
-For any rails app, run the following to install rake tasks (optional)
+and run the install gems rake task on your application
+
+  rake gems:install
+
+For any rails app, run the following to install wizardly rake tasks (optional)
 
   ./script/generate wizardly_app
 
@@ -55,7 +59,7 @@ Step 1: Define validation groups for your model.
 
 Step 2: Tell your controller to act 'wizardly'.
 
-  class SignupController < ActionController::Base
+  class SignupController < ApplicationController
     act_wizardly_for :user
   end
 
@@ -100,7 +104,7 @@ uses the HTTP_REFERER for both cases.  What if there is no referer?  The control
 raises a RedirectNotDefined error.  Let's remedy this problem with some options
 in the macro.
 
-  class SignupController < ActionController::Base
+  class SignupController < ApplicationController
     act_wizardly_for :user, :completed=>'/main/finished', 
       :canceled=>'/main/canceled'
   end
@@ -109,7 +113,7 @@ Now whether the user completes or cancels the wizard, the controller knows
 how to redirect.  Alternately, if you want to redirect to the same page 
 for both cases
 
-  class SignupController < ActionController::Base
+  class SignupController < ApplicationController
     act_wizardly_for :user, :redirect=>'/main'
   end
 
@@ -131,7 +135,7 @@ The wizardly controller defines five default button functions: next, back, skip,
 cancel, and finish.  All but :skip are used in the scaffolding by default.  You
 can add :skip functionality to all pages by adding an option to the macro
 
-  class SignupController < ActionController::Base
+  class SignupController < ApplicationController
     act_wizardly_for :user, :redirect=>'/main', :skip=>true
   end
 
@@ -147,7 +151,7 @@ for the developer to change the processing.  Here's an example.  Say our model
 declares a :step4 validation_group with :username, :password, and 
 :password_confirmation fields.  We'd like to handle this step specifically.
 
-  class SignupController < ActionController::Base
+  class SignupController < ApplicationController
     act_wizardly_for :user, :redirect=>'/main'
 
     def on_step4_page_errors
@@ -190,7 +194,7 @@ of the button.  For general use, this is not an issue.  See the Advanced Configu
 For anyone needing to handle rendering in a special way, wizardly provides a render
 call back for this.
 
-  class SignupController < ActionController::Base
+  class SignupController < ApplicationController
     act_wizardly_for :user, :redirect=>'/main'
     
     def render_wizard_page

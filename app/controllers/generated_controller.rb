@@ -6,6 +6,35 @@ class GeneratedController < ApplicationController
   before_filter :guard_entry
 
   
+  # finish action method
+  def finish
+    @step = :finish
+    @wizard = wizard_config
+    @title = 'Finish'
+    @description = ''
+    h = (flash[:wizard_model]||{}).merge(params[:user] || {}) 
+    @user = User.new(h)
+    flash[:wizard_model] = h
+    button_id = check_action_for_button
+    return if performed?
+    if request.get?
+      return if callback_performs_action?(:on_get_finish_page)
+      render_wizard_page
+      return
+    end
+
+    @user.enable_validation_group :finish
+    unless @user.valid?
+      return if callback_performs_action?(:on_finish_page_errors)
+      render_wizard_page
+      return
+    end
+
+    return if _on_wizard_finish
+    redirect_to '/main/finished'
+  end
+
+
   # init action method
   def init
     @step = :init
@@ -34,35 +63,6 @@ class GeneratedController < ApplicationController
     session[:progression] = [:init]
     return if callback_performs_action?(:on_init_page_next)
     redirect_to :action=>:second
-  end
-
-
-  # finish action method
-  def finish
-    @step = :finish
-    @wizard = wizard_config
-    @title = 'Finish'
-    @description = ''
-    h = (flash[:wizard_model]||{}).merge(params[:user] || {}) 
-    @user = User.new(h)
-    flash[:wizard_model] = h
-    button_id = check_action_for_button
-    return if performed?
-    if request.get?
-      return if callback_performs_action?(:on_get_finish_page)
-      render_wizard_page
-      return
-    end
-
-    @user.enable_validation_group :finish
-    unless @user.valid?
-      return if callback_performs_action?(:on_finish_page_errors)
-      render_wizard_page
-      return
-    end
-
-    return if _on_wizard_finish
-    redirect_to '/main/finished'
   end
 
 
