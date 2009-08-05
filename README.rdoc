@@ -34,7 +34,7 @@ Features include:
 
 Put the following in your application's config block in config/environment.rb
 
-  config.gem 'jeffp-wizardly', :lib=>'wizardly'
+  config.gem 'jeffp-wizardly', :lib=>'wizardly' 
 
 and run the install gems rake task on your application
 
