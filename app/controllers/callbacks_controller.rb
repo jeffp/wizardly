@@ -1,9 +1,12 @@
-class CallbacksController < ApplicationController #< WizardForModelController
+require 'wizardly'
+class CallbacksController < ApplicationController 
+  require 'callbacks_module'
+  include Callbacks
   before_filter :init_flash_notice
 
-#  wizard_for_model :four_step_user, :skip=>true, :mask_passwords=>[:password, :password_confirmation], 
-#    :completed=>{:controller=>:main, :action=>:finished}, 
-#    :canceled=>{:controller=>:main, :action=>:canceled}
+  act_wizardly_for :four_step_user, :skip=>true, :mask_passwords=>[:password, :password_confirmation], 
+    :completed=>{:controller=>:main, :action=>:finished}, 
+    :canceled=>{:controller=>:main, :action=>:canceled}
   
   def init_flash_notice; flash[:notice] = ''; end
 
@@ -13,25 +16,50 @@ class CallbacksController < ApplicationController #< WizardForModelController
 #    flash[:notice] = flash[:notice] + "[#{val}]"
   end
   
-  def on_get_init_page; flag :on_get_init_page; end
-  def on_init_page_errors; flag :on_init_page_errors; end
-  def on_init_page_next; flag :on_init_page_next; end
-  def on_init_page_skip; flag :on_init_page_skip; end
-  def on_init_page_cancel; flag :on_init_page_cancel; end
+  def self.flag_callback(name)
+    self.class_eval "def #{name}; flag :#{name}; end "
+  end
+  def self.chain_callback(name)
+    self.class_eval <<-ERT
+      alias_method :#{name}_orig, :#{name}
+      def #{name}; flag :#{name}; #{name}_orig; end
+    ERT
+  end
+
+  flag_callback :on_get_init_page
+  flag_callback :on_init_page_errors
+  flag_callback :on_init_page_next
+  flag_callback :on_init_page_finish
+  flag_callback :on_init_page_back
+  flag_callback :on_init_page_skip
+  flag_callback :on_init_page_cancel
   
-  def on_get_second_page; flag :on_get_second_page; end
-  def on_second_page_back; flag :on_second_page_back; end
-  def on_second_page_next; flag :on_second_page_next; end
-  def on_second_page_errors; flag :on_second_page_errors; end
-  def on_second_page_skip; flag :on_second_age_skip; end
-  def on_second_page_cancel; flag :on_second_page_cancel; end
-  
-  def wizard_render_page; flag :wizard_render_page; end
-  
+  flag_callback :on_get_second_page
+  flag_callback :on_second_page_back
+  flag_callback :on_second_page_next
+  flag_callback :on_second_page_errors
+  flag_callback :on_second_page_skip
+  flag_callback :on_second_page_finish
+  flag_callback :on_second_page_cancel
+    
+  flag_callback :on_get_finish_page
+  #flag_callback :on_finish_page_errors
+  flag_callback :on_finish_page_back
+  flag_callback :on_finish_page_finish
+  flag_callback :on_finish_page_next
+  flag_callback :on_finish_page_cancel
   def on_finish_page_errors
     flag :on_finish_page_errors
     @four_step_user[:password] = ''
     @four_step_user[:password_confirmation] = ''
   end
+
+  flag_callback :wizard_render_page
+  
+
+  chain_callback :_on_wizard_back
+  chain_callback :_on_wizard_skip
+  chain_callback :_on_wizard_cancel
+  chain_callback :_on_wizard_finish
   
 end
