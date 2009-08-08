@@ -1,0 +1,22 @@
+%h1 <%= page.title %>
+
+<% unless page.description.blank? %>
+  %p <%= page.description %>
+<% end %>
+- if flash[:notice]
+  %p{:style=>'color: green'}= flash[:notice]
+
+- form_for :<%= model_name %>, :url=>{:action=>:<%= page.name %>} do |f|
+  = f.error_messages
+  
+<% for field in page.fields %>
+  <% first_field_id ||= "#{model_name}_#{field.name}" %>
+  %p
+    = f.label :<%= field.name %>
+    %br
+    = f.<%= field.field_type %> :<%= field.name %>
+<% end %>
+  %p= wizardly_submit
+
+%script{:type=>'text/javascript'} 
+  document.getElementById('<%=first_field_id %>').focus()

@@ -8,7 +8,7 @@ class WizardlyAppGenerator < Rails::Generator::Base
   
   def manifest
     record do |m|
-      m.directory "app/lib/tasks"
+      m.directory "lib/tasks"
       
       m.file "wizardly.rake", "lib/tasks/wizardly.rake"
       

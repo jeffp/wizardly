@@ -2,8 +2,8 @@
 # from the project root directory.
 ENV["RAILS_ENV"] ||= 'test'
 require File.dirname(__FILE__) + "/../config/environment" unless defined?(RAILS_ROOT)
-require 'validation_group'
-require 'wizardly'
+#require 'validation_group'
+#require 'wizardly'
 require 'spec/autorun'
 require 'spec/rails'
 

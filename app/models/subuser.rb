@@ -1,5 +1,6 @@
 #require 'validation_group'
-class User < ActiveRecord::Base
+class Subuser < User
+  #set_table_name "users"
 =begin
       t.string :first_name
       t.string :last_name
@@ -11,10 +12,6 @@ class User < ActiveRecord::Base
       t.string :status
 =end
 
-  validates_confirmation_of :password
-  validates_presence_of :first_name, :last_name, :username, :password, :age, :gender, :status
-  #validates_numercality_of :age
-  #validates_uniqueness_of :username
 
   validation_group :init, :fields=>[:first_name, :last_name]
   validation_group :second, :fields=>[:age, :gender, :programmer, :status]

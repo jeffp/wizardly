@@ -12,20 +12,24 @@ class GeneratedController < ApplicationController
     @wizard = wizard_config
     @title = 'Finish'
     @description = ''
+    before_callback = request.post? ? :before_post_finish_page : :before_get_finish_page
+    if callback_performs_action?(before_callback)
+      raise CallbackError, "render or redirect not allowed in :"+before_callback.to_s+" callback", caller
+    end
     h = (flash[:wizard_model]||{}).merge(params[:user] || {}) 
     @user = User.new(h)
     flash[:wizard_model] = h
     button_id = check_action_for_button
     return if performed?
     if request.get?
-      return if callback_performs_action?(:on_get_finish_page)
+      return if callback_performs_action?(:after_get_finish_page)
       render_wizard_page
       return
     end
 
     @user.enable_validation_group :finish
     unless @user.valid?
-      return if callback_performs_action?(:on_finish_page_errors)
+      return if callback_performs_action?(:on_invalidated_finish_page)
       render_wizard_page
       return
     end
@@ -41,20 +45,24 @@ class GeneratedController < ApplicationController
     @wizard = wizard_config
     @title = 'Init'
     @description = ''
+    before_callback = request.post? ? :before_post_init_page : :before_get_init_page
+    if callback_performs_action?(before_callback)
+      raise CallbackError, "render or redirect not allowed in :"+before_callback.to_s+" callback", caller
+    end
     h = (flash[:wizard_model]||{}).merge(params[:user] || {}) 
     @user = User.new(h)
     flash[:wizard_model] = h
     button_id = check_action_for_button
     return if performed?
     if request.get?
-      return if callback_performs_action?(:on_get_init_page)
+      return if callback_performs_action?(:after_get_init_page)
       render_wizard_page
       return
     end
 
     @user.enable_validation_group :init
     unless @user.valid?
-      return if callback_performs_action?(:on_init_page_errors)
+      return if callback_performs_action?(:on_invalidated_init_page)
       render_wizard_page
       return
     end
@@ -72,20 +80,24 @@ class GeneratedController < ApplicationController
     @wizard = wizard_config
     @title = 'Second'
     @description = ''
+    before_callback = request.post? ? :before_post_second_page : :before_get_second_page
+    if callback_performs_action?(before_callback)
+      raise CallbackError, "render or redirect not allowed in :"+before_callback.to_s+" callback", caller
+    end
     h = (flash[:wizard_model]||{}).merge(params[:user] || {}) 
     @user = User.new(h)
     flash[:wizard_model] = h
     button_id = check_action_for_button
     return if performed?
     if request.get?
-      return if callback_performs_action?(:on_get_second_page)
+      return if callback_performs_action?(:after_get_second_page)
       render_wizard_page
       return
     end
 
     @user.enable_validation_group :second
     unless @user.valid?
-      return if callback_performs_action?(:on_second_page_errors)
+      return if callback_performs_action?(:on_invalidated_second_page)
       render_wizard_page
       return
     end

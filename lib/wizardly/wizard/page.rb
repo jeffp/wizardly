@@ -43,6 +43,7 @@ module Wizardly
         @field_type ||= case @column_type
         when :string                      then :text_field
         when :password                    then :password_field
+        when :enum                        then :enum_select
         when :text                        then :text_area
         when :boolean                     then :check_box
         when :integer, :float, :decimal   then :text_field

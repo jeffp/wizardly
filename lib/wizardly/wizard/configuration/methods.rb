@@ -29,20 +29,24 @@ module Wizardly
     @wizard = wizard_config
     @title = '#{page.title}'
     @description = '#{page.description}'
+    before_callback = request.post? ? :before_post_#{id}_page : :before_get_#{id}_page
+    if callback_performs_action?(before_callback)
+      raise CallbackError, "render or redirect not allowed in :"+before_callback.to_s+" callback", caller
+    end
     h = (flash[:wizard_model]||{}).merge(params[:#{self.model}] || {}) 
     @#{self.model} = #{self.model_class_name}.new(h)
     flash[:wizard_model] = h
     button_id = check_action_for_button
     return if performed?
     if request.get?
-      return if callback_performs_action?(:on_get_#{id}_page)
+      return if callback_performs_action?(:after_get_#{id}_page)
       render_wizard_page
       return
     end
 
     @#{self.model}.enable_validation_group :#{id}
     unless @#{self.model}.valid?
-      return if callback_performs_action?(:on_#{id}_page_errors)
+      return if callback_performs_action?(:on_invalidated_#{id}_page)
       render_wizard_page
       return
     end

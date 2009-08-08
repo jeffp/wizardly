@@ -23,13 +23,20 @@ module ValidationGroup
 
       def validation_group(name, options={})
         self_groups = (self.validation_group_classes[self] ||= {})
-        self_groups[name.to_sym] = options[:fields] || []
-        @validation_group_order ||= []
-        @validation_group_order << name.to_sym
+        self_groups[name.to_sym] = case options[:fields]
+				when Array then options[:fields]
+				when Symbol, String then [options[:fields].to_sym]
+				else []
+				end
+        # jeffp: capture the declaration order for this class only (no
+        # superclasses)
+        (@validation_group_order ||= []) << name.to_sym
 
         unless included_modules.include?(InstanceMethods)
+          # jeffp: added reader for current_validation_fields
           attr_reader :current_validation_group, :current_validation_fields
           include InstanceMethods
+          # jeffp: add valid?(group = nil), see definition below
           alias_method_chain :valid?, :validation_group
         end
       end
@@ -47,6 +54,7 @@ module ValidationGroup
         end
         if found
           @current_validation_group = group
+          # jeffp: capture current fields for performance optimization
           @current_validation_fields = group_classes[found][group]
         else
           raise ArgumentError, "No validation group of name :#{group}"
@@ -55,9 +63,13 @@ module ValidationGroup
 
       def disable_validation_group
         @current_validation_group = nil
+        # jeffp: delete fields
         @current_validation_fields = nil
       end
 			
+      # jeffp: optimizer for someone writing custom :validate method -- no need
+      # to validate fields outside the current validation group note: could also
+      # use in validation modules to improve performance
       def should_validate?(attribute)
 	!self.validation_group_enabled? || (@current_validation_fields && @current_validation_fields.include?(attribute.to_sym))
       end
@@ -78,6 +90,7 @@ module ValidationGroup
       def add_with_validation_group(attribute,
           msg = @@default_error_messages[:invalid], *args,
           &block)
+        # jeffp: setting @current_validation_fields and use of should_validate? optimizes code
         add_error = @base.respond_to?(:should_validate?) ? @base.should_validate?(attribute.to_sym) : true
         add_without_validation_group(attribute, msg, *args, &block) if add_error
       end
@@ -106,5 +119,7 @@ module ValidationGroup
   end
 end
 
+# jeffp:  moved from init.rb for gemification purposes -- 
+# require 'validation_group' loads everything now, init.rb requires 'validation_group' only
 ActiveRecord::Base.send(:extend, ValidationGroup::ActiveRecord::ActsMethods)
 ActiveRecord::Errors.send :include, ValidationGroup::ActiveRecord::Errors

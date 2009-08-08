@@ -13,10 +13,16 @@ class WizardlyScaffoldGenerator < Rails::Generator::Base
   
   alias_method :controller_file_name, :controller_underscore_name
   
+  def add_options!(opt)
+    opt.on('--haml', 'Generate scaffold for haml wizard') { |v| options[:output] = :haml }
+    opt.on('--ajax', 'Generate scaffold for ajax wizard') { |v| options[:output] = :ajax }
+  end
+  
+  
   def initialize(runtime_args, runtime_options = {})
     super
     name = @args[0].sub(/^:/, '').underscore.sub(/_controller$/, '').camelize + 'Controller'
-    
+
     base_name, @controller_class_path, @controller_file_path, @controller_class_nesting, @controller_class_nesting_depth = extract_modules(name)
     @controller_class_name_without_nesting = base_name.camelize
     @controller_underscore_name = base_name.underscore
@@ -26,7 +32,7 @@ class WizardlyScaffoldGenerator < Rails::Generator::Base
     else
       @controller_class_name = "#{@controller_class_nesting}::#{@controller_class_name_without_nesting}"
     end
-    
+
     begin
       @controller_class = @controller_class_name.constantize 
     rescue Exception => e
@@ -34,15 +40,17 @@ class WizardlyScaffoldGenerator < Rails::Generator::Base
     end
     begin
       @wizard_config = @controller_class.wizard_config
-    rescue
-      raise Wizardly::WizardlyScaffoldError, "#{@controller_class_name} must have a valid 'wizard_for_model' declaration", caller
+    rescue Exception => e
+      raise Wizardly::WizardlyScaffoldError, "#{@controller_class_name} must contain a valid 'act_wizardly_for' or 'wizard_for_model' macro: " + e.message, caller
     end
-    
+
     @pages = @wizard_config.pages
     @model_name = @wizard_config.model
-    
+
     #based on options, default is --html, others --ajax, --haml
-    @view_file_ext = "html.erb"
+    @view_file_ext = ["html.erb", "html.erb"]
+    @view_file_ext = ["html.haml.erb", "html.haml"] if options[:output] == :haml
+    #ajax
   end
   
   def manifest
@@ -56,8 +64,8 @@ class WizardlyScaffoldGenerator < Rails::Generator::Base
 
       pages.each do |id, page|
         m.template(
-          "form.#{view_file_ext}",
-          File.join('app/views', controller_class_path, controller_name, "#{id}.#{view_file_ext}"),
+          "form.#{view_file_ext.first}",
+          File.join('app/views', controller_class_path, controller_name, "#{id}.#{view_file_ext.last}"),
           :assigns=>{:id=>id, :page=>page}
         )
       end
@@ -65,7 +73,7 @@ class WizardlyScaffoldGenerator < Rails::Generator::Base
       m.template("helper.rb.erb", File.join('app/helpers', controller_class_path, "#{controller_name}_helper.rb"))
 
       # Layout and stylesheet.
-      m.template("layout.#{view_file_ext}", File.join('app/views/layouts', controller_class_path, "#{controller_name}.#{view_file_ext}"))
+      m.template("layout.#{view_file_ext.first}", File.join('app/views/layouts', controller_class_path, "#{controller_name}.#{view_file_ext.last}"))
       m.template('style.css', 'public/stylesheets/scaffold.css')
 
       #m.dependency 'model', [name] + @args, :collision => :skip

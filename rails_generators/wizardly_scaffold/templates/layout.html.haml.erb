@@ -1,0 +1,10 @@
+!!! XML
+!!!
+%html{ :'xml:lang' => "en", :lang => "en" }
+  %head
+    %title= "<%=controller_class_name %>: " + controller.action_name
+    %meta{ :"http-equiv" => "Content-Type", :content => "text/html; charset-utf-8" }
+    %link{ :rel => "shortcut icon", :href => "/favicon.ico" }
+    = stylesheet_link_tag "scaffold", :media => "screen"
+  %body
+    = yield

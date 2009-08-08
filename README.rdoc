@@ -20,7 +20,7 @@ Install
 
 +wizardly+ builds on Alex Kira's +validation_group+ plugin code to 
 DRY up the Rails MVC implementation of a wizard.  In three easy steps, +wizardly+
-produces the scaffolding and controller of a functioning wizard.
+produces the scaffolding and controller of a multi-step wizard.
 
 Features include:
 * Model-based definition
@@ -106,7 +106,7 @@ in the macro.
 
   class SignupController < ApplicationController
     act_wizardly_for :user, :completed=>'/main/finished', 
-      :canceled=>'/main/canceled'
+      :canceled=>{:controller=>:main, :action=>:canceled}
   end
 
 Now whether the user completes or cancels the wizard, the controller knows
@@ -123,11 +123,11 @@ Here's a list of options you can use in the macro
 
   :completed => '/main/finished'
   :canceled => {:controller=>'main', :action=>'canceled'}
-  :skip => {true|false}
+  :skip => true
   :mask_fields => [:password, :password_confirmation] (by default)
 
-The :skip option tells the scaffold helpers to include or exclude a skip button on every page.  
-The :mask_fields options tells the scaffold generator which fields are html 'password' fields.
+Setting the :skip option to +true+ tells the scaffold helpers to include or exclude a skip button on each page.  
+The :mask_fields options tells the scaffold generator which fields to generate as 'type=password' fields.
 
 === Buttons
 

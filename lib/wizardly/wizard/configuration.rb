@@ -67,18 +67,24 @@ module Wizardly
         begin
           @page_order = @wizard_model_const.validation_group_order 
         rescue Exception => e
-          raise ValidationGroupError, "Is validation_group gem installed? " + e.message, caller
+          raise ValidationGroupError, "Unable to read validation groups from #{@wizard_model_class_name}: " + e.message, caller
         end
         raise(ValidationGroupError, "No validation groups defined for model #{@wizard_model_class_name}", caller) unless (@page_order && !@page_order.empty?)
 
         begin
           groups = @wizard_model_const.validation_groups
+          enum_attrs = @wizard_model_const.respond_to?(:enumerated_attributes) ? @wizard_model_const.enumerated_attributes.collect {|k,v| k } : []
           model_inst = @wizard_model_const.new
           last_index = @page_order.size-1
           @page_order.each_with_index do |p, index|
             fields = groups[p].map do |f|
               column = model_inst.column_for_attribute(f)
-              type = (@password_fields && @password_fields.include?(f)) ? :password : (column ? column.type : :string)
+              type = case
+              when enum_attrs.include?(f) then :enum
+              when (@password_fields && @password_fields.include?(f)) then :password
+              else
+                column ? column.type : :string
+              end
               PageField.new(f, type)
             end
             page = Page.new(p, fields)

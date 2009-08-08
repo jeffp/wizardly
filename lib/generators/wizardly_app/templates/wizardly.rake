@@ -14,14 +14,18 @@ namespace :wizardly do
           puts
           puts c.print_config
         rescue Exception=>e
-          puts "Problem printing configuration: " + e.message
+          puts "Problem printing configuration."
+          puts "#{e.class.name} -- #{e.message}"
+          puts
         end
-      rescue
-        puts "{#{name}} is not a 'wizardly' controller.\nMake sure 'wizard_for_model' is defined in the controller class."
+      rescue Exception=>e
+        puts "{#{name}} is not a 'wizardly' controller.\nMake sure 'wizard_for_model' is defined in the controller class." 
+        puts "#{e.class.name} -- #{e.message}"
         puts
       end
-    rescue
-      puts "{#{name}} does not reference a controller class"
+    rescue Exception=>e
+      puts "{#{name}} does not reference a controller class."
+      puts "#{e.class.name} -- #{e.message}"
       puts
     end
   end

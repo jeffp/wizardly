@@ -73,7 +73,7 @@ namespace :spec do
   end
   desc "Test the CallbacksController"
   Spec::Rake::SpecTask.new(:callback) do |t|
-    t.spec_files = FileList['spec/integrations/callbacks_spec.rb']
+    t.spec_files = FileList['spec/controllers/callbacks_spec.rb']
     t.libs << 'lib' << 'spec' << 'spec/integrations'
     t.spec_opts = ['--options', 'spec/spec.opts']    
     t.rcov = false
