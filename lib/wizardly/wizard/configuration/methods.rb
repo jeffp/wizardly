@@ -25,56 +25,70 @@ module Wizardly
         next_button = self.button_for_function(:next).id
         (mb = StringIO.new) << <<-ONE
   def #{page.name}
-    @step = :#{id}
-    @wizard = wizard_config
-    @title = '#{page.title}'
-    @description = '#{page.description}'
-    before_callback = request.post? ? :before_post_#{id}_page : :before_get_#{id}_page
-    if callback_performs_action?(before_callback)
-      raise CallbackError, "render or redirect not allowed in :"+before_callback.to_s+" callback", caller
-    end
-    h = (flash[:wizard_model]||{}).merge(params[:#{self.model}] || {}) 
-    @#{self.model} = #{self.model_class_name}.new(h)
-    flash[:wizard_model] = h
-    button_id = check_action_for_button
-    return if performed?
-    if request.get?
-      return if callback_performs_action?(:after_get_#{id}_page)
-      render_wizard_page
-      return
-    end
+    begin
+      @step = :#{id}
+      @wizard = wizard_config
+      @title = '#{page.title}'
+      @description = '#{page.description}'
+      h = (flash[:wizard_model]||{}).merge(params[:#{self.model}] || {}) 
+      @#{self.model} = #{self.model_class_name}.new(h)
+      if request.post? && callback_performs_action?(:on_post_#{id}_form)
+        raise CallbackError, "render or redirect not allowed in :filter_params_#{id}_page callback", caller
+      end
+      button_id = check_action_for_button
+      return if performed?
+      if request.get?
+        return if callback_performs_action?(:on_get_#{id}_form)
+        render_wizard_form
+        return
+      end
 
-    @#{self.model}.enable_validation_group :#{id}
-    unless @#{self.model}.valid?
-      return if callback_performs_action?(:on_invalidated_#{id}_page)
-      render_wizard_page
-      return
-    end
+      # @#{self.model}.enable_validation_group :#{id}
+      unless @#{self.model}.valid?(:#{id})
+        return if callback_performs_action?(:on_invalid_#{id}_form)
+        render_wizard_form
+        return
+      end
 
         ONE
         if self.last_page?(id)
           mb << <<-TWO
-    return if _on_wizard_#{finish_button}
-    redirect_to #{Utils.formatted_redirect(self.completed_redirect)}
-  end
+      return if callback_performs_action?(:on_#{id}_form_#{finish_button})
+      _on_wizard_#{finish_button}
+      redirect_to #{Utils.formatted_redirect(self.completed_redirect)} unless self.performed?
         TWO
         elsif self.first_page?(id)
           mb << <<-THREE
-    return _on_wizard_#{finish_button} if button_id == :#{finish_button}
-    session[:progression] = [:#{id}]
-    return if callback_performs_action?(:on_#{id}_page_#{next_button})
-    redirect_to :action=>:#{self.next_page(id)}
-  end
+      if button_id == :#{finish_button}
+        return if callback_performs_action?(:on_#{id}_form_#{finish_button})
+        _on_wizard_#{finish_button} if button_id == :#{finish_button}
+        redirect_to #{Utils.formatted_redirect(self.completed_redirect)} unless self.performed?
+        return
+      end
+      session[:progression] = [:#{id}]
+      return if callback_performs_action?(:on_#{id}_form_#{next_button})
+      redirect_to :action=>:#{self.next_page(id)}
         THREE
         else
           mb << <<-FOUR
-    return _on_wizard_#{finish_button} if button_id == :#{finish_button}
-    session[:progression].push(:#{id})
-    return if callback_performs_action?(:on_#{id}_page_#{next_button})
-    redirect_to :action=>:#{self.next_page(id)}
-  end
+      if button_id == :#{finish_button}
+        return if callback_performs_action?(:on_#{id}_form_#{finish_button})
+        _on_wizard_#{finish_button} if button_id == :#{finish_button}
+        redirect_to #{Utils.formatted_redirect(self.completed_redirect)} unless self.performed?
+        return
+      end
+      session[:progression].push(:#{id})
+      return if callback_performs_action?(:on_#{id}_form_#{next_button})
+      redirect_to :action=>:#{self.next_page(id)}
         FOUR
         end
+        
+        mb << <<-ENSURE
+    ensure
+      flash[:wizard_model] = h.merge(@#{self.model}.attributes)    
+    end
+  end        
+ENSURE
         mb.string
       end
 
@@ -87,26 +101,26 @@ module Wizardly
   protected
   def _on_wizard_#{finish}
     @#{self.model}.save_without_validation!
-    flash.discard(:wizard_model)
     _wizard_final_redirect_to(:completed)
   end
   def _on_wizard_#{skip}
-    redirect_to :action=>wizard_config.next_page(@step)
-    true
+    redirect_to(:action=>wizard_config.next_page(@step)) unless self.performed?
   end
   def _on_wizard_#{back}
-    redirect_to :action=>((session[:progression]||[]).pop || :#{self.page_order.first})
-    true
+    # TODO: fix progression management
+    redirect_to(:action=>((session[:progression]||[]).pop || :#{self.page_order.first})) unless self.performed?
   end
   def _on_wizard_#{cancel}
     _wizard_final_redirect_to(:canceled)
-    true
   end
   def _wizard_final_redirect_to(which_redirect) 
+    flash.discard(:wizard_model)
     initial_referer = reset_wizard_session_vars
-    redir = (which_redirect == :completed ? wizard_config.completed_redirect : wizard_config.canceled_redirect) || initial_referer
-    return redirect_to(redir) if redir
-    raise Wizardly::RedirectNotDefinedError, "No redirect was defined for completion or canceling the wizard.  Use :completed and :canceled options to define redirects.", caller
+    unless self.performed?
+      redir = (which_redirect == :completed ? wizard_config.completed_redirect : wizard_config.canceled_redirect) || initial_referer
+      return redirect_to(redir) if redir
+      raise Wizardly::RedirectNotDefinedError, "No redirect was defined for completion or canceling the wizard.  Use :completed and :canceled options to define redirects.", caller
+    end
   end
   hide_action :_on_wizard_#{finish}, :_on_wizard_#{skip}, :_on_wizard_#{back}, :_on_wizard_#{cancel}, :_wizard_final_redirect_to
       CALLBACKS
@@ -116,6 +130,7 @@ module Wizardly
         next_id = self.button_for_function(:next).id
         finish_id = self.button_for_function(:finish).id
         first_page = self.page_order.first
+        guard_line = self.guard? ? '' : 'return #guard entry disabled'
       <<-HELPERS
   protected
   def guard_entry
@@ -127,13 +142,14 @@ module Wizardly
       session[:initial_referer] = nil
     end
     flash.discard(:wizard_model)
+    #{guard_line}
     redirect_to :action=>:#{first_page} unless (params[:action] || '') == '#{first_page}'
   end   
   hide_action :guard_entry
 
-  def render_wizard_page
+  def render_wizard_form
   end
-  hide_action :render_wizard_page
+  hide_action :render_wizard_form
 
   def performed?; super; end
   hide_action :performed?
@@ -144,14 +160,13 @@ module Wizardly
     unless (params[:commit] == nil)
       button_name = methodize_button_name(params[:commit])
       unless [:#{next_id}, :#{finish_id}].include?(button_id = button_name.to_sym)
-        action_method_name = "on_" + params[:action].to_s + "_page_" + button_name
-        unless callback_performs_action?(action_method_name)         
-          method_name = "_on_wizard_" + button_name
-          if (method = self.method(method_name))
-            method.call
-          else
-            raise MissingCallbackError, "Callback method either '" + action_method_name + "' or '" + method_name + "' not defined", caller
-          end
+        action_method_name = "on_" + params[:action].to_s + "_form_" + button_name
+        callback_performs_action?(action_method_name)
+        method_name = "_on_wizard_" + button_name
+        if (self.method(method_name))
+          self.__send__(method_name)
+        else
+          raise MissingCallbackError, "Callback method either '" + action_method_name + "' or '" + method_name + "' not defined", caller
         end
       end
     end
@@ -165,22 +180,12 @@ module Wizardly
     attr_reader :wizard_callbacks
   end
   
-  def callback_performs_action?(methId)
-    wc = self.class.wizard_callbacks
-    case wc[methId]
-    when :none 
-      return false
-    when :found
-    else #nil
-      unless self.class.method_defined?(methId)
-        wc[methId] = :none
-        return false
-      end
-      wc[methId] = :found
-    end
-    self.__send__(methId)
-    return self.performed?
-  end    
+  def callback_performs_action?(methId, arg=nil)
+    return false unless self.methods.include?(methId.to_s)
+    #self.__send__(methId)
+    self.method(methId).call
+    self.performed?
+  end
   hide_action :callback_performs_action?
 
       HELPERS

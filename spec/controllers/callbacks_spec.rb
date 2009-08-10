@@ -1,16 +1,16 @@
 require File.dirname(__FILE__) + '/../spec_helper'
 require File.dirname(__FILE__) + '/../../app/controllers/callbacks_module'
 
-include Callbacks
+#include Callbacks
 
 
 Spec::Matchers.define :have_callback do |*expected_callbacks|
   match do |value|
-    button_callbacks.each do |b|
-      return false unless value[b] == (expected_callbacks.include?(b) ? true : nil)
+    Callbacks::action_callbacks.each do |b|
+      value[b] == (expected_callbacks.include?(b) ? true : nil)
     end
-    wizard_callbacks.each do |w|
-      return false unless value[w] == (expected_callbacks.include?(w) ? true : nil)
+    Callbacks::wizard_callbacks.each do |w|
+      value[w] == (expected_callbacks.include?(w) ? true : nil)
     end
     true
   end
@@ -19,38 +19,39 @@ end
 
 describe CallbacksController do
 
-  it "should flag before_get_init_page and on_get_init_page when calling GET on init action" do
+  it "should flag callbacks and render when requesting the init form" do
     get :init
-    assigns.should have_callback(:after_get_init_page, :before_get_init_page, :render_wizard_page)
+    assigns.should have_callback(:on_get_init_form, :render_wizard_form)
   end
-  it "should flag on_init_page_errors when clicking next on init page with empty fields" do
+  it "should flag callbacks and re-render when posting next to the init page with empty fields" do
     post :init
-    assigns.should have_callback(:on_invalid_init_page, :before_post_init_page, :render_wizard_page)
+    assigns.should have_callback(:on_post_init_form, :on_invalid_init_form, :render_wizard_form)
   end
-  it "should flag on_init_page_next when clicking next on valid init page" do
-    post :init, {:commit=>'Next', :four_step_user=>{:first_name=>'john', :last_name=>'doe'}}
+  #should there be a _on_wizard_next
+  it "should flag callbacks when posting next to the init page with valid fields" do
+    post :init, {:commit=>'Next', :user=>{:first_name=>'john', :last_name=>'doe'}}
     response.should redirect_to(:action=>:second)
-    assigns.should have_callback(:after_post_init_page, :before_post_init_page)
+    assigns.should have_callback(:on_post_init_form, :on_init_form_next)
   end
-  it "should flag on_init_page_skip, _on_wizard_skip and redirect to :second page when posting skip to init page" do
-    post :init, {:commit=>'Skip'}
-    assigns.should have_callback(:before_post_init_page, :on_init_page_skip, :_on_wizard_skip)
+  it "should flag callbacks and redirect to :second page when posting skip to init page" do
+    post :init, {:commit=>'Skip', :user=>{:first_name=>'', :last_name=>''}}
+    assigns.should have_callback(:on_post_init_form, :on_init_form_skip, :_on_wizard_skip)
     response.should redirect_to(:action=>:second)
   end
-  it "should flag on_second_page_back when posting :back to :second page" do
+  it "should flag callbacks and redirect to :first page when posting :back to :second page" do
     post :second, {:commit=>'Back'}
-    assigns.should have_callback(:before_post_init_page, :on_second_page_back, :_on_wizard_back)
+    assigns.should have_callback(:on_post_second_form, :on_second_form_back, :_on_wizard_back)
     response.should redirect_to(:action=>:init)
   end
-  it "should flag before_post_second_page and on_second_page_cancel when canceling on second page" do
+  it "should flag callbacks and redirect to :canceled page when posting cancel to second page" do
     post :second, {:commit=>'Cancel'}
-    assigns.should have_callback(:before_post_second_page, :on_second_page_cancel, :_on_wizard_cancel)
+    assigns.should have_callback(:on_post_second_form, :on_second_form_cancel, :_on_wizard_cancel)
     response.should redirect_to(:controller=>:main, :action=>:canceled)
   end
-  it "should flag before_post, after_post and finished for finishing the finish page" do
-    post :finish, {:commit=>'Finish'}
-    assigns.should have_callback(:before_post_finish_page, :after_post_finish_page, :on_finish_page_finish)
-    response.should redirect_to(:controller=>:main, :action=>:completed)
+  it "should flag callbacks and redirect to :completed page when posting finish to the finish page" do
+    post :finish, {:commit=>'Finish', :user=>{:username=>'johndoe', :password=>'password', :password_confirmation=>'password'}}
+    assigns.should have_callback(:on_post_finish_form, :on_finish_form_finish, :_on_wizard_finish)
+    response.should redirect_to(:controller=>:main, :action=>:finished)
   end
 end
 

@@ -154,7 +154,7 @@ declares a :step4 validation_group with :username, :password, and
   class SignupController < ApplicationController
     act_wizardly_for :user, :redirect=>'/main'
 
-    def on_step4_page_errors
+    def on_invalid_step4_form
       #clear the password field if errors
       @user[:password] = ''
       @user[:password_confirmation] = ''
@@ -166,13 +166,14 @@ validation_group.
 
 Every page has a set of callbacks.  Here's the list for our :step1 page.
 
-  def on_get_step1_page; end    # called just before rendering the GET action
-  def on_step1_page_errors; end # called just before rendering with errors
-  def on_step1_page_next; end   
-  def on_step1_page_back; end
-  def on_step1_page_cancel; end
-  def on_step1_page_finish; end
-  def on_step1_page_skip; end
+  def on_get_step1_form; end    
+  def on_post_step1_form; end
+  def on_invalid_step1_form; end 
+  def on_step1_form_next; end   
+  def on_step1_form_back; end
+  def on_step1_form_cancel; end
+  def on_step1_form_finish; end
+  def on_step1_form_skip; end
 
 Each callback is defined for the controller object, thus giving it access to all
 controller variables and methods just as any other action method.  Each callback

@@ -8,105 +8,122 @@ class GeneratedController < ApplicationController
   
   # finish action method
   def finish
-    @step = :finish
-    @wizard = wizard_config
-    @title = 'Finish'
-    @description = ''
-    before_callback = request.post? ? :before_post_finish_page : :before_get_finish_page
-    if callback_performs_action?(before_callback)
-      raise CallbackError, "render or redirect not allowed in :"+before_callback.to_s+" callback", caller
-    end
-    h = (flash[:wizard_model]||{}).merge(params[:user] || {}) 
-    @user = User.new(h)
-    flash[:wizard_model] = h
-    button_id = check_action_for_button
-    return if performed?
-    if request.get?
-      return if callback_performs_action?(:after_get_finish_page)
-      render_wizard_page
-      return
-    end
+    begin
+      @step = :finish
+      @wizard = wizard_config
+      @title = 'Finish'
+      @description = ''
+      h = (flash[:wizard_model]||{}).merge(params[:user] || {}) 
+      @user = User.new(h)
+      if request.post? && callback_performs_action?(:on_post_finish_form)
+        raise CallbackError, "render or redirect not allowed in :filter_params_finish_page callback", caller
+      end
+      button_id = check_action_for_button
+      return if performed?
+      if request.get?
+        return if callback_performs_action?(:on_get_finish_form)
+        render_wizard_form
+        return
+      end
 
-    @user.enable_validation_group :finish
-    unless @user.valid?
-      return if callback_performs_action?(:on_invalidated_finish_page)
-      render_wizard_page
-      return
-    end
+      # @user.enable_validation_group :finish
+      unless @user.valid?(:finish)
+        return if callback_performs_action?(:on_invalid_finish_form)
+        render_wizard_form
+        return
+      end
 
-    return if _on_wizard_finish
-    redirect_to '/main/finished'
-  end
+      return if callback_performs_action?(:on_finish_form_finish)
+      _on_wizard_finish
+      redirect_to '/main/finished' unless self.performed?
+    ensure
+      flash[:wizard_model] = h.merge(@user.attributes)    
+    end
+  end        
 
 
   # init action method
   def init
-    @step = :init
-    @wizard = wizard_config
-    @title = 'Init'
-    @description = ''
-    before_callback = request.post? ? :before_post_init_page : :before_get_init_page
-    if callback_performs_action?(before_callback)
-      raise CallbackError, "render or redirect not allowed in :"+before_callback.to_s+" callback", caller
-    end
-    h = (flash[:wizard_model]||{}).merge(params[:user] || {}) 
-    @user = User.new(h)
-    flash[:wizard_model] = h
-    button_id = check_action_for_button
-    return if performed?
-    if request.get?
-      return if callback_performs_action?(:after_get_init_page)
-      render_wizard_page
-      return
-    end
+    begin
+      @step = :init
+      @wizard = wizard_config
+      @title = 'Init'
+      @description = ''
+      h = (flash[:wizard_model]||{}).merge(params[:user] || {}) 
+      @user = User.new(h)
+      if request.post? && callback_performs_action?(:on_post_init_form)
+        raise CallbackError, "render or redirect not allowed in :filter_params_init_page callback", caller
+      end
+      button_id = check_action_for_button
+      return if performed?
+      if request.get?
+        return if callback_performs_action?(:on_get_init_form)
+        render_wizard_form
+        return
+      end
 
-    @user.enable_validation_group :init
-    unless @user.valid?
-      return if callback_performs_action?(:on_invalidated_init_page)
-      render_wizard_page
-      return
-    end
+      # @user.enable_validation_group :init
+      unless @user.valid?(:init)
+        return if callback_performs_action?(:on_invalid_init_form)
+        render_wizard_form
+        return
+      end
 
-    return _on_wizard_finish if button_id == :finish
-    session[:progression] = [:init]
-    return if callback_performs_action?(:on_init_page_next)
-    redirect_to :action=>:second
-  end
+      if button_id == :finish
+        return if callback_performs_action?(:on_init_form_finish)
+        _on_wizard_finish if button_id == :finish
+        redirect_to '/main/finished' unless self.performed?
+        return
+      end
+      session[:progression] = [:init]
+      return if callback_performs_action?(:on_init_form_next)
+      redirect_to :action=>:second
+    ensure
+      flash[:wizard_model] = h.merge(@user.attributes)    
+    end
+  end        
 
 
   # second action method
   def second
-    @step = :second
-    @wizard = wizard_config
-    @title = 'Second'
-    @description = ''
-    before_callback = request.post? ? :before_post_second_page : :before_get_second_page
-    if callback_performs_action?(before_callback)
-      raise CallbackError, "render or redirect not allowed in :"+before_callback.to_s+" callback", caller
-    end
-    h = (flash[:wizard_model]||{}).merge(params[:user] || {}) 
-    @user = User.new(h)
-    flash[:wizard_model] = h
-    button_id = check_action_for_button
-    return if performed?
-    if request.get?
-      return if callback_performs_action?(:after_get_second_page)
-      render_wizard_page
-      return
-    end
+    begin
+      @step = :second
+      @wizard = wizard_config
+      @title = 'Second'
+      @description = ''
+      h = (flash[:wizard_model]||{}).merge(params[:user] || {}) 
+      @user = User.new(h)
+      if request.post? && callback_performs_action?(:on_post_second_form)
+        raise CallbackError, "render or redirect not allowed in :filter_params_second_page callback", caller
+      end
+      button_id = check_action_for_button
+      return if performed?
+      if request.get?
+        return if callback_performs_action?(:on_get_second_form)
+        render_wizard_form
+        return
+      end
 
-    @user.enable_validation_group :second
-    unless @user.valid?
-      return if callback_performs_action?(:on_invalidated_second_page)
-      render_wizard_page
-      return
-    end
+      # @user.enable_validation_group :second
+      unless @user.valid?(:second)
+        return if callback_performs_action?(:on_invalid_second_form)
+        render_wizard_form
+        return
+      end
 
-    return _on_wizard_finish if button_id == :finish
-    session[:progression].push(:second)
-    return if callback_performs_action?(:on_second_page_next)
-    redirect_to :action=>:finish
-  end
+      if button_id == :finish
+        return if callback_performs_action?(:on_second_form_finish)
+        _on_wizard_finish if button_id == :finish
+        redirect_to '/main/finished' unless self.performed?
+        return
+      end
+      session[:progression].push(:second)
+      return if callback_performs_action?(:on_second_form_next)
+      redirect_to :action=>:finish
+    ensure
+      flash[:wizard_model] = h.merge(@user.attributes)    
+    end
+  end        
 
   def index
     redirect_to :action=>:init
@@ -116,26 +133,26 @@ class GeneratedController < ApplicationController
     protected
   def _on_wizard_finish
     @user.save_without_validation!
-    flash.discard(:wizard_model)
     _wizard_final_redirect_to(:completed)
   end
   def _on_wizard_skip
-    redirect_to :action=>wizard_config.next_page(@step)
-    true
+    redirect_to(:action=>wizard_config.next_page(@step)) unless self.performed?
   end
   def _on_wizard_back
-    redirect_to :action=>((session[:progression]||[]).pop || :init)
-    true
+    # TODO: fix progression management
+    redirect_to(:action=>((session[:progression]||[]).pop || :init)) unless self.performed?
   end
   def _on_wizard_cancel
     _wizard_final_redirect_to(:canceled)
-    true
   end
   def _wizard_final_redirect_to(which_redirect) 
+    flash.discard(:wizard_model)
     initial_referer = reset_wizard_session_vars
-    redir = (which_redirect == :completed ? wizard_config.completed_redirect : wizard_config.canceled_redirect) || initial_referer
-    return redirect_to(redir) if redir
-    raise Wizardly::RedirectNotDefinedError, "No redirect was defined for completion or canceling the wizard.  Use :completed and :canceled options to define redirects.", caller
+    unless self.performed?
+      redir = (which_redirect == :completed ? wizard_config.completed_redirect : wizard_config.canceled_redirect) || initial_referer
+      return redirect_to(redir) if redir
+      raise Wizardly::RedirectNotDefinedError, "No redirect was defined for completion or canceling the wizard.  Use :completed and :canceled options to define redirects.", caller
+    end
   end
   hide_action :_on_wizard_finish, :_on_wizard_skip, :_on_wizard_back, :_on_wizard_cancel, :_wizard_final_redirect_to
 
@@ -150,13 +167,14 @@ class GeneratedController < ApplicationController
       session[:initial_referer] = nil
     end
     flash.discard(:wizard_model)
+    
     redirect_to :action=>:init unless (params[:action] || '') == 'init'
   end   
   hide_action :guard_entry
 
-  def render_wizard_page
+  def render_wizard_form
   end
-  hide_action :render_wizard_page
+  hide_action :render_wizard_form
 
   def performed?; super; end
   hide_action :performed?
@@ -167,14 +185,13 @@ class GeneratedController < ApplicationController
     unless (params[:commit] == nil)
       button_name = methodize_button_name(params[:commit])
       unless [:next, :finish].include?(button_id = button_name.to_sym)
-        action_method_name = "on_" + params[:action].to_s + "_page_" + button_name
-        unless callback_performs_action?(action_method_name)         
-          method_name = "_on_wizard_" + button_name
-          if (method = self.method(method_name))
-            method.call
-          else
-            raise MissingCallbackError, "Callback method either '" + action_method_name + "' or '" + method_name + "' not defined", caller
-          end
+        action_method_name = "on_" + params[:action].to_s + "_form_" + button_name
+        callback_performs_action?(action_method_name)
+        method_name = "_on_wizard_" + button_name
+        if (self.method(method_name))
+          self.__send__(method_name)
+        else
+          raise MissingCallbackError, "Callback method either '" + action_method_name + "' or '" + method_name + "' not defined", caller
         end
       end
     end
@@ -188,22 +205,12 @@ class GeneratedController < ApplicationController
     attr_reader :wizard_callbacks
   end
   
-  def callback_performs_action?(methId)
-    wc = self.class.wizard_callbacks
-    case wc[methId]
-    when :none 
-      return false
-    when :found
-    else #nil
-      unless self.class.method_defined?(methId)
-        wc[methId] = :none
-        return false
-      end
-      wc[methId] = :found
-    end
-    self.__send__(methId)
-    return self.performed?
-  end    
+  def callback_performs_action?(methId, arg=nil)
+    return false unless self.methods.include?(methId.to_s)
+    #self.__send__(methId)
+    self.method(methId).call
+    self.performed?
+  end
   hide_action :callback_performs_action?
 
 

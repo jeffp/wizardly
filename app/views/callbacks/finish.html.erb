@@ -3,7 +3,7 @@
 
 <%= "<p style=\"color: green\">#{flash[:notice]}<p>" if flash[:notice] %>
 
-<% form_for :four_step_user, :url=>{:action=>:finish}  do |f| %>
+<% form_for :user, :url=>{:action=>:finish}  do |f| %>
   <%= f.error_messages %>
 
   
@@ -27,5 +27,5 @@
 <% end %>
 
 <script type='text/javascript'>
-  document.getElementById('four_step_user_username').focus()
+  document.getElementById('user_username').focus()
 </script>

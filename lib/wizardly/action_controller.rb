@@ -20,7 +20,6 @@ module Wizardly
         
         # controller_name = self.name.sub(/Controller$/, '').underscore.to_sym
         @wizard_config = Wizardly::Wizard::Configuration.create(controller_name, model, opts, &block)
-
         # define methods
         self.class_eval @wizard_config.print_page_action_methods
         self.class_eval @wizard_config.print_callbacks
