@@ -146,37 +146,37 @@ See the Advanced Configuration section.
 === Callbacks
 
 The wizard macro 'act_wizardly_for' creates controller actions for each page.  
-The process for each page is conventional, but hooks (or callbacks) are available
-for the developer to change the processing.  Here's an example.  Say our model
+The processing is standard for a wizard.  Hooks or callback macros are available
+for changing or interrupting the processing.  Here's an example.  Say our model
 declares a :step4 validation_group with :username, :password, and 
 :password_confirmation fields.  We'd like to handle this step specifically.
 
   class SignupController < ApplicationController
     act_wizardly_for :user, :redirect=>'/main'
 
-    def on_invalid_step4_form
+    on_errors(:step4) do
       #clear the password field if errors
       @user[:password] = ''
       @user[:password_confirmation] = ''
     end
   end
 
-The above callback is only called if :step4 does not validate according to its
+The above hook macro is only called if :step4 does not validate according to its
 validation_group.  
 
-Every page has a set of callbacks.  Here's the list for our :step1 page.
+Every page has a set of callback macros.  Here's the list.
 
-  def on_get_step1_form; end    
-  def on_post_step1_form; end
-  def on_invalid_step1_form; end 
-  def on_step1_form_next; end   
-  def on_step1_form_back; end
-  def on_step1_form_cancel; end
-  def on_step1_form_finish; end
-  def on_step1_form_skip; end
+  on_get(:step)         # called just after creating model instance and before rendering a GET request
+  on_post(:step)        # called just after creating the model instance for a POST request
+  on_errors(:step)      # called after on_post callback if the form is invalid according to validation group
+  on_next(:step)        # called on a valid form when :next button is pressed
+  on_back(:step)        # called when the :back button is pressed
+  on_cancel(:step)      # called when the :cancel button is pressed
+  on_finish(:step)      # called on a valid form when the :finish button is pressed
+  on_skip(:step)        # called when the skip button is pressed
 
-Each callback is defined for the controller object, thus giving it access to all
-controller variables and methods just as any other action method.  Each callback
+The block for each hook is called in the controller context, thus giving it access to all
+controller variables and methods just as any controller action method.  Each callback
 has access to the model through an instance variable using the model's name.  So
 for instance if our model is :user, the instance variable is '@user'.  Each 
 wizard page action also defines a @title, @description and @step instance variable.
@@ -190,6 +190,59 @@ redirect caused by a button click in the view.
 Important: Method names for button callbacks will change if you change the name
 of the button.  For general use, this is not an issue.  See the Advanced Configuration section.
 
+The order of callbacks for a GET request is as follows:
+
+  on_back
+  on_skip
+  on_cancel
+  ...on_'custom_button'...
+  on_get
+  render_wizard_form
+
+Of course, only one of the button callbacks (back, skip or cancel) may occur for any single request, and 
+any one of them may keep the on_get from being called if they render or redirect. 
+:next and :finish button callbacks only occur for POST requests.  The on_get callback
+occurs just before rendering, and may itself render or redirect.  The on_get callback
+is an opportunity to modify or check the model fields before rendering.
+
+The order of callbacks for a POST request is as follows:
+
+  on_post
+  on_back
+  on_skip
+  on_cancel
+  ...on_'custom_button'...
+  on_errors
+    render_wizard_form  # only if errors
+  on_next
+  on_finish
+  
+In contrast to the on_get callback, the on_post callback occurs first.  It is an 
+opportunity to modify the model instance values (the model instance has already been 
+created from the post parameters).  The on_post method does not permit any rendering
+or redirecting since the back, skip and cancel buttons have not been evaluated and 
+may require precedence over flow control.  on_errors is called only for an invalid
+form and the render callback (see below) is called only if there are errors.  Either
+on_next or on_finish are called if the form is valid.  on_next is the default if a 
+'Finish' button is not pressed.  on_next by default moves to the next page, while
+on_finish saves the model and redirects to the :completed redirect.
+
+The argument of the callback macro indicates for which pages the block should be 
+called.  You can indicate as many pages or :all as shown.
+
+  on_post(:step1) do
+    ...
+  end
+  on_back(:step2, :step3, :step4) do
+    ...
+  end
+  on_get(:all) do
+    ...
+  end
+
+Indicating a form that does not exist raises a CallbackError.
+
+
 === Rendering Callback
 
 For anyone needing to handle rendering in a special way, wizardly provides a render
@@ -198,7 +251,7 @@ call back for this.
   class SignupController < ApplicationController
     act_wizardly_for :user, :redirect=>'/main'
     
-    def render_wizard_page
+    def render_wizard_form
       respond_to do |format|
         format.html
         format.xml { render_xml(@step) }

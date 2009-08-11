@@ -4,7 +4,7 @@ class Callbacks2Controller < ApplicationController
   act_wizardly_for :user, :skip=>true, :guard=>false, :mask_passwords=>[:password, :password_confirmation], 
     :completed=>{:controller=>:main, :action=>:finished}, 
     :canceled=>'/main/canceled'#{:controller=>:main, :action=>:canceled}
-  
+
   def on_post_second_form
     redirect_to '/main/index#on_post_second_form'
   end

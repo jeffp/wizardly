@@ -11,6 +11,8 @@ class <%= controller_class_name %> < ApplicationController
 
   <%= helper_methods %>
 
+  <%= callback_macro_methods %>
+
   private
   def methodize_button_name(value)
     value.to_s.strip.squeeze(' ').gsub(/ /, '_').downcase

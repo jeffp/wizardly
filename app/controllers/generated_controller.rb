@@ -6,36 +6,42 @@ class GeneratedController < ApplicationController
   before_filter :guard_entry
 
   
-  # finish action method
-  def finish
+  # second action method
+  def second
     begin
-      @step = :finish
+      @step = :second
       @wizard = wizard_config
-      @title = 'Finish'
+      @title = 'Second'
       @description = ''
       h = (flash[:wizard_model]||{}).merge(params[:user] || {}) 
       @user = User.new(h)
-      if request.post? && callback_performs_action?(:on_post_finish_form)
-        raise CallbackError, "render or redirect not allowed in :filter_params_finish_page callback", caller
+      if request.post? && callback_performs_action?(:on_post_second_form)
+        raise CallbackError, "render or redirect not allowed in :on_post_second_form callback", caller
       end
       button_id = check_action_for_button
       return if performed?
       if request.get?
-        return if callback_performs_action?(:on_get_finish_form)
+        return if callback_performs_action?(:on_get_second_form)
         render_wizard_form
         return
       end
 
-      # @user.enable_validation_group :finish
-      unless @user.valid?(:finish)
-        return if callback_performs_action?(:on_invalid_finish_form)
+      # @user.enable_validation_group :second
+      unless @user.valid?(:second)
+        return if callback_performs_action?(:on_invalid_second_form)
         render_wizard_form
         return
       end
 
-      return if callback_performs_action?(:on_finish_form_finish)
-      _on_wizard_finish
-      redirect_to '/main/finished' unless self.performed?
+      if button_id == :finish
+        return if callback_performs_action?(:on_second_form_finish)
+        _on_wizard_finish if button_id == :finish
+        redirect_to '/main/finished' unless self.performed?
+        return
+      end
+      session[:progression].push(:second)
+      return if callback_performs_action?(:on_second_form_next)
+      redirect_to :action=>:finish
     ensure
       flash[:wizard_model] = h.merge(@user.attributes)    
     end
@@ -52,7 +58,7 @@ class GeneratedController < ApplicationController
       h = (flash[:wizard_model]||{}).merge(params[:user] || {}) 
       @user = User.new(h)
       if request.post? && callback_performs_action?(:on_post_init_form)
-        raise CallbackError, "render or redirect not allowed in :filter_params_init_page callback", caller
+        raise CallbackError, "render or redirect not allowed in :on_post_init_form callback", caller
       end
       button_id = check_action_for_button
       return if performed?
@@ -84,42 +90,36 @@ class GeneratedController < ApplicationController
   end        
 
 
-  # second action method
-  def second
+  # finish action method
+  def finish
     begin
-      @step = :second
+      @step = :finish
       @wizard = wizard_config
-      @title = 'Second'
+      @title = 'Finish'
       @description = ''
       h = (flash[:wizard_model]||{}).merge(params[:user] || {}) 
       @user = User.new(h)
-      if request.post? && callback_performs_action?(:on_post_second_form)
-        raise CallbackError, "render or redirect not allowed in :filter_params_second_page callback", caller
+      if request.post? && callback_performs_action?(:on_post_finish_form)
+        raise CallbackError, "render or redirect not allowed in :on_post_finish_form callback", caller
       end
       button_id = check_action_for_button
       return if performed?
       if request.get?
-        return if callback_performs_action?(:on_get_second_form)
+        return if callback_performs_action?(:on_get_finish_form)
         render_wizard_form
         return
       end
 
-      # @user.enable_validation_group :second
-      unless @user.valid?(:second)
-        return if callback_performs_action?(:on_invalid_second_form)
+      # @user.enable_validation_group :finish
+      unless @user.valid?(:finish)
+        return if callback_performs_action?(:on_invalid_finish_form)
         render_wizard_form
         return
       end
 
-      if button_id == :finish
-        return if callback_performs_action?(:on_second_form_finish)
-        _on_wizard_finish if button_id == :finish
-        redirect_to '/main/finished' unless self.performed?
-        return
-      end
-      session[:progression].push(:second)
-      return if callback_performs_action?(:on_second_form_next)
-      redirect_to :action=>:finish
+      return if callback_performs_action?(:on_finish_form_finish)
+      _on_wizard_finish
+      redirect_to '/main/finished' unless self.performed?
     ensure
       flash[:wizard_model] = h.merge(@user.attributes)    
     end
@@ -213,6 +213,144 @@ class GeneratedController < ApplicationController
   end
   hide_action :callback_performs_action?
 
+
+
+    def self.on_post(*args, &block)
+    return if args.empty?
+    all_forms = [:init, :second, :finish]
+    if args.include?(:all)
+      forms = all_forms
+    else
+      forms = args.map do |fa|
+        unless all_forms.include?(fa)
+          raise(ArgumentError, ":"+fa.to_s+" in callback on_post is not a form defined for the wizard", caller)
+        end
+        fa
+      end
+    end
+    forms.each do |form|
+      self.send(:define_method, sprintf("on_post_%s_form", form.to_s), &block )
+    end
+  end
+  def self.on_get(*args, &block)
+    return if args.empty?
+    all_forms = [:init, :second, :finish]
+    if args.include?(:all)
+      forms = all_forms
+    else
+      forms = args.map do |fa|
+        unless all_forms.include?(fa)
+          raise(ArgumentError, ":"+fa.to_s+" in callback on_get is not a form defined for the wizard", caller)
+        end
+        fa
+      end
+    end
+    forms.each do |form|
+      self.send(:define_method, sprintf("on_get_%s_form", form.to_s), &block )
+    end
+  end
+  def self.on_errors(*args, &block)
+    return if args.empty?
+    all_forms = [:init, :second, :finish]
+    if args.include?(:all)
+      forms = all_forms
+    else
+      forms = args.map do |fa|
+        unless all_forms.include?(fa)
+          raise(ArgumentError, ":"+fa.to_s+" in callback on_errors is not a form defined for the wizard", caller)
+        end
+        fa
+      end
+    end
+    forms.each do |form|
+      self.send(:define_method, sprintf("on_invalid_%s_form", form.to_s), &block )
+    end
+  end
+  def self.on_back(*args, &block)
+    return if args.empty?
+    all_forms = [:init, :second, :finish]
+    if args.include?(:all)
+      forms = all_forms
+    else
+      forms = args.map do |fa|
+        unless all_forms.include?(fa)
+          raise(ArgumentError, ":"+fa.to_s+" in callback on_back is not a form defined for the wizard", caller)
+        end
+        fa
+      end
+    end
+    forms.each do |form|
+      self.send(:define_method, sprintf("on_%s_form_back", form.to_s), &block )
+    end
+  end
+  def self.on_cancel(*args, &block)
+    return if args.empty?
+    all_forms = [:init, :second, :finish]
+    if args.include?(:all)
+      forms = all_forms
+    else
+      forms = args.map do |fa|
+        unless all_forms.include?(fa)
+          raise(ArgumentError, ":"+fa.to_s+" in callback on_cancel is not a form defined for the wizard", caller)
+        end
+        fa
+      end
+    end
+    forms.each do |form|
+      self.send(:define_method, sprintf("on_%s_form_cancel", form.to_s), &block )
+    end
+  end
+  def self.on_skip(*args, &block)
+    return if args.empty?
+    all_forms = [:init, :second, :finish]
+    if args.include?(:all)
+      forms = all_forms
+    else
+      forms = args.map do |fa|
+        unless all_forms.include?(fa)
+          raise(ArgumentError, ":"+fa.to_s+" in callback on_skip is not a form defined for the wizard", caller)
+        end
+        fa
+      end
+    end
+    forms.each do |form|
+      self.send(:define_method, sprintf("on_%s_form_skip", form.to_s), &block )
+    end
+  end
+  def self.on_finish(*args, &block)
+    return if args.empty?
+    all_forms = [:init, :second, :finish]
+    if args.include?(:all)
+      forms = all_forms
+    else
+      forms = args.map do |fa|
+        unless all_forms.include?(fa)
+          raise(ArgumentError, ":"+fa.to_s+" in callback on_finish is not a form defined for the wizard", caller)
+        end
+        fa
+      end
+    end
+    forms.each do |form|
+      self.send(:define_method, sprintf("on_%s_form_finish", form.to_s), &block )
+    end
+  end
+  def self.on_next(*args, &block)
+    return if args.empty?
+    all_forms = [:init, :second, :finish]
+    if args.include?(:all)
+      forms = all_forms
+    else
+      forms = args.map do |fa|
+        unless all_forms.include?(fa)
+          raise(ArgumentError, ":"+fa.to_s+" in callback on_next is not a form defined for the wizard", caller)
+        end
+        fa
+      end
+    end
+    forms.each do |form|
+      self.send(:define_method, sprintf("on_%s_form_next", form.to_s), &block )
+    end
+  end
 
 
   private

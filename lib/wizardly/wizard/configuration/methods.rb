@@ -2,6 +2,40 @@ module Wizardly
   module Wizard
     class Configuration
       
+      def print_callback_macros
+        macros = [ 
+          %w(on_post on_post_%s_form),
+          %w(on_get on_get_%s_form),
+          %w(on_errors on_invalid_%s_form)
+        ]
+        self.buttons.each do |id, button|
+          macros << ['on_'+ id.to_s, 'on_%s_form_'+ id.to_s ]
+        end
+        mb = StringIO.new
+        macros.each do |macro|
+          mb << <<-MACRO
+  def self.#{macro.first}(*args, &block)
+    return if args.empty?
+    all_forms = #{page_order.inspect}
+    if args.include?(:all)
+      forms = all_forms
+    else
+      forms = args.map do |fa|
+        unless all_forms.include?(fa)
+          raise(ArgumentError, ":"+fa.to_s+" in callback #{macro.first} is not a form defined for the wizard", caller)
+        end
+        fa
+      end
+    end
+    forms.each do |form|
+      self.send(:define_method, sprintf("#{macro.last}", form.to_s), &block )
+    end
+  end
+MACRO
+        end
+        mb.string
+      end
+      
       def print_page_action_methods
         mb = StringIO.new
         self.pages.each do |id, p|
@@ -33,7 +67,7 @@ module Wizardly
       h = (flash[:wizard_model]||{}).merge(params[:#{self.model}] || {}) 
       @#{self.model} = #{self.model_class_name}.new(h)
       if request.post? && callback_performs_action?(:on_post_#{id}_form)
-        raise CallbackError, "render or redirect not allowed in :filter_params_#{id}_page callback", caller
+        raise CallbackError, "render or redirect not allowed in :on_post_#{id}_form callback", caller
       end
       button_id = check_action_for_button
       return if performed?
@@ -130,7 +164,7 @@ ENSURE
         next_id = self.button_for_function(:next).id
         finish_id = self.button_for_function(:finish).id
         first_page = self.page_order.first
-        guard_line = self.guard? ? '' : 'return #guard entry disabled'
+        guard_line = @guard_entry ? '' : 'return #guard entry disabled'
       <<-HELPERS
   protected
   def guard_entry

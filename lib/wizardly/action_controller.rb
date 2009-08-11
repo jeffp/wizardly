@@ -24,6 +24,7 @@ module Wizardly
         self.class_eval @wizard_config.print_page_action_methods
         self.class_eval @wizard_config.print_callbacks
         self.class_eval @wizard_config.print_helpers
+        self.class_eval @wizard_config.print_callback_macros
       end
     end
 

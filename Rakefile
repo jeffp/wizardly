@@ -41,7 +41,7 @@ require 'spec/rake/spectask'
 
 namespace :spec do
   desc "Run all specs"
-  task :all=>[:macro, :gen, :scaffold, :callback, :callback2]
+  task :all=>[:macro, :gen, :scaffold, :callback, :callback2, :callback3]
   desc "Test the MacroController"
   Spec::Rake::SpecTask.new(:macro) do |t|
     t.spec_files = FileList['spec/integrations/macro_spec.rb']
@@ -83,6 +83,13 @@ namespace :spec do
     t.spec_files = FileList['spec/controllers/callbacks2_spec.rb']
     t.libs << 'lib' << 'spec' << 'spec/integrations'
     t.spec_opts = ['--options', 'spec/spec.opts']    
+    t.rcov = false
+  end
+  desc "Test the Callbacks3Controller"
+  Spec::Rake::SpecTask.new(:callback3) do |t|
+    t.spec_files = FileList['spec/controllers/callbacks3_spec.rb']
+    t.libs << 'lib' << 'spec' << 'spec/integrations'
+    t.spec_opts = ['--options', 'spec/spec.opts']
     t.rcov = false
   end
 end

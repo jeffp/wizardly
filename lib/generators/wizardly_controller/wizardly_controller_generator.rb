@@ -43,6 +43,9 @@ class WizardlyControllerGenerator < Rails::Generator::Base
   def helper_methods
     @wizard_config.print_helpers
   end
+  def callback_macro_methods
+    @wizard_config.print_callback_macros
+  end
   
   protected
   # Override with your own usage banner.
