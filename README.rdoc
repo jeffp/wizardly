@@ -117,28 +117,30 @@ for both cases
     act_wizardly_for :user, :redirect=>'/main'
   end
 
-==== act_wizardly_for Options List
+==== Options For act_wizardly_for
 
 Here's a list of options you can use in the macro
 
   :completed => '/main/finished'
   :canceled => {:controller=>'main', :action=>'canceled'}
   :skip => true
+  :guard => false
   :mask_fields => [:password, :password_confirmation] (by default)
   :persist_model => {:once|:per_page}
   :form_data => {:sandbox|:session}
 
 Setting the :skip option to +true+ tells the scaffold helpers to include or exclude a skip button on each page.  
 The :mask_fields options tells the scaffold generator which fields to generate as 'type=password' fields.
-:persist_model and :form_data are explained below.
+:persist_model and :form_data are explained below. 
+
 
 ==== Preserving Form Field Data
 
 The :form_data option controls how the form data is preserved between 
-page requests that call outside the wizard controller.  The default option setting
-:session keeps the form data until the wizard is complete regardless of 
+page requests that call outside the wizard controller.  The default option setting,
+:session, keeps the form data until the wizard is complete regardless of 
 whether the user leaves the wizard and returns later.  The form
-data is preserved for the life of the session.
+data is preserved for the life of the session or until the user completes the wizard.
 
 The other option setting, :sandbox, clears the form data whenever 
 the user leaves the wizard before the wizard is complete.  This includes pressing
@@ -147,6 +149,22 @@ Upon returning to the wizard, the form is reset and the user starts fresh.
 
 The form data is always cleared once the user has completed the wizard and the
 database record has been created.
+
+==== Guarding Wizard Entry
+
+The :guard option controls how a user may enter the wizard.  If set to true, the
+default, the wizard is guarded from entry anywhere except the first page.  The wizard
+controller will automatically redirect to the first page.  When set to false, entry
+may occur at any point.  This may be useful for testing purposes and instances where
+the application needs to navigate away and return to the wizard.
+
+The guarding behavior works a little differently depending on the :form_data setting.
+When :form_data is set to :session (the default behavior), guarding only occurs
+for the initial entry.  Once a user has entered the form and started it, while
+form data is being kept, the application may thereafter enter anywhere.  On the 
+contrary, if :form_data is set to :sandbox, entry is always guarded, and once the user
+leaves the wizard, entry may only occur at the initial page (as the form data has
+been reset).
 
 ==== Saving The Model
 
@@ -299,7 +317,7 @@ call back for this.
 Wizard scaffolds can be created for any wizardly controller (one using the acts_wizardly_for
 macro).  
 
-  ./script/generate wizardly_scaffold controller_name
+  ./script/generate wizardly_scaffold controller_name --haml
 
 The wizardly_scaffold generator will create HTML view scaffolds by default.  Append a
 --haml option to create scaffolds in HAML.  
