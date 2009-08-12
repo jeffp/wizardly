@@ -1,6 +1,4 @@
-
-shared_examples_for "all implementations" do
-  
+shared_examples_for "form data using sandbox" do
   it "should reset form data when leaving wizard and returning" do
     step_to_finish_page
     click_button cancel_button
@@ -8,7 +6,27 @@ shared_examples_for "all implementations" do
     current_url.should include(init_page)
     field_with_id(/first/).value.should be_blank
     field_with_id(/last/).value.should be_blank
+  end  
+end
+
+shared_examples_for "form data using session" do
+  it "should not reset form data when leaving wizard and returning" do
+    step_to_finish_page
+    click_button cancel_button
+    click_link 'signup'
+    current_url.should include(init_page)
+    field_with_id(/first/).value.should == field_first_name
+    field_with_id(/last/).value.should == field_last_name
+    click_button next_button
+    field_with_id(/age/).value.should == field_age.to_s
+    field_with_id(/gender/).value.should == field_gender
+    field_with_id(/programmer/).value.should == (field_programmer ? "1":"0")
+    field_with_id(/status/).value.should == field_status
   end
+end
+
+shared_examples_for "all implementations" do
+  
   it "should save user when clicking finish on finish page" do
     User.delete_all
     step_to_finish_page
@@ -124,34 +142,4 @@ shared_examples_for "all implementations" do
   end
   
 
-  private #refactored helpers
-  def step_to_init_page
-    visit init_page_path
-  end
-  def fill_in_init_page
-    fill_in(/first_name/, :with=>field_first_name)
-    fill_in(/last_name/, :with=>field_last_name)
-  end
-  def step_to_second_page
-    step_to_init_page
-    fill_in_init_page
-    click_button next_button
-  end
-  def fill_in_second_page
-    fill_in(/age/, :with=>field_age)
-    fill_in(/gender/, :with=>field_gender)
-    fill_in(/status/, :with=>field_status)
-    fill_in(/programmer/, :with=>field_programmer)
-  end
-  def step_to_finish_page
-    step_to_second_page
-    fill_in_second_page
-    click_button next_button
-  end
-  def fill_in_finish_page
-    fill_in(/username/, :with=>field_username)
-    fill_in("user[password]", :with=>field_password)
-    fill_in("user[password_confirmation]", :with=>field_password_confirmation)
-  end
-  
 end

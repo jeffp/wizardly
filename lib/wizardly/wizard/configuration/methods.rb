@@ -49,9 +49,14 @@ MACRO
   def index
     redirect_to :action=>:#{self.page_order.first}
   end
+
         INDEX
         mb.string
       end
+      
+      def persist_key; 
+        @persist_key ||= "wizardly_#{controller_name.to_s.underscore}_#{model}".to_sym 
+      end      
     
       def print_page_action_method(id)
         page = @pages[id]
@@ -64,8 +69,8 @@ MACRO
       @wizard = wizard_config
       @title = '#{page.title}'
       @description = '#{page.description}'
-      h = (flash[:wizard_model]||{}).merge(params[:#{self.model}] || {}) 
-      @#{self.model} = #{self.model_class_name}.new(h)
+      h = (self.wizard_form_data||{}).merge(params[:#{self.model}] || {}) 
+      @#{self.model} = build_wizard_model(h)
       if request.post? && callback_performs_action?(:on_post_#{id}_form)
         raise CallbackError, "render or redirect not allowed in :on_post_#{id}_form callback", caller
       end
@@ -87,18 +92,19 @@ MACRO
         ONE
         if self.last_page?(id)
           mb << <<-TWO
-      return if callback_performs_action?(:on_#{id}_form_#{finish_button})
+      callback_performs_action?(:on_#{id}_form_#{finish_button})
       _on_wizard_#{finish_button}
       redirect_to #{Utils.formatted_redirect(self.completed_redirect)} unless self.performed?
         TWO
         elsif self.first_page?(id)
           mb << <<-THREE
       if button_id == :#{finish_button}
-        return if callback_performs_action?(:on_#{id}_form_#{finish_button})
+        callback_performs_action?(:on_#{id}_form_#{finish_button})
         _on_wizard_#{finish_button} if button_id == :#{finish_button}
         redirect_to #{Utils.formatted_redirect(self.completed_redirect)} unless self.performed?
         return
       end
+      save_wizard_model! if wizard_config.persist_model_per_page?
       session[:progression] = [:#{id}]
       return if callback_performs_action?(:on_#{id}_form_#{next_button})
       redirect_to :action=>:#{self.next_page(id)}
@@ -106,11 +112,12 @@ MACRO
         else
           mb << <<-FOUR
       if button_id == :#{finish_button}
-        return if callback_performs_action?(:on_#{id}_form_#{finish_button})
+        callback_performs_action?(:on_#{id}_form_#{finish_button})
         _on_wizard_#{finish_button} if button_id == :#{finish_button}
         redirect_to #{Utils.formatted_redirect(self.completed_redirect)} unless self.performed?
         return
       end
+      save_wizard_model! if wizard_config.persist_model_per_page?
       session[:progression].push(:#{id})
       return if callback_performs_action?(:on_#{id}_form_#{next_button})
       redirect_to :action=>:#{self.next_page(id)}
@@ -119,7 +126,7 @@ MACRO
         
         mb << <<-ENSURE
     ensure
-      flash[:wizard_model] = h.merge(@#{self.model}.attributes)    
+      self.wizard_form_data = h.merge(@#{self.model}.attributes) if (@#{self.model} && !@completed)
     end
   end        
 ENSURE
@@ -135,6 +142,8 @@ ENSURE
   protected
   def _on_wizard_#{finish}
     @#{self.model}.save_without_validation!
+    @completed = true
+    reset_wizard_form_data
     _wizard_final_redirect_to(:completed)
   end
   def _on_wizard_#{skip}
@@ -148,7 +157,6 @@ ENSURE
     _wizard_final_redirect_to(:canceled)
   end
   def _wizard_final_redirect_to(which_redirect) 
-    flash.discard(:wizard_model)
     initial_referer = reset_wizard_session_vars
     unless self.performed?
       redir = (which_redirect == :completed ? wizard_config.completed_redirect : wizard_config.canceled_redirect) || initial_referer
@@ -175,11 +183,52 @@ ENSURE
     else
       session[:initial_referer] = nil
     end
-    flash.discard(:wizard_model)
+    if wizard_config.form_data_keep_in_session?
+      return if self.wizard_form_data  # if it has an id we've started a wizard
+    else
+      reset_wizard_form_data 
+    end
     #{guard_line}
     redirect_to :action=>:#{first_page} unless (params[:action] || '') == '#{first_page}'
-  end   
+  end
   hide_action :guard_entry
+
+  def save_wizard_model!
+    @#{self.model}.save_without_validation!
+    if wizard_config.form_data_keep_in_session?
+      h = self.wizard_form_data
+      h['id'] = @#{self.model}.id
+      self.wizard_form_data= h
+    end
+  end
+  def build_wizard_model(params)
+    if (wizard_config.persist_model_per_page? && (model_id = params['id']))
+      _model = #{self.model_class_name}.find(model_id)
+      _model.attributes = params
+      _model
+    else
+      #{self.model_class_name}.new(params)
+    end
+  end
+  hide_action :build_wizard_model, :save_wizard_model!
+
+  def wizard_form_data=(hash)
+    if wizard_config.form_data_keep_in_session?
+      session[:#{self.persist_key}] = hash
+    else
+      if hash
+        flash[:#{self.persist_key}] = hash
+      else
+        flash.discard(:#{self.persist_key})
+      end
+    end
+  end
+
+  def reset_wizard_form_data; self.wizard_form_data = nil; end
+  def wizard_form_data
+    wizard_config.form_data_keep_in_session? ? session[:#{self.persist_key}] : flash[:#{self.persist_key}]
+  end
+  hide_action :wizard_form_data, :wizard_form_data=, :reset_wizard_form_data
 
   def render_wizard_form
   end

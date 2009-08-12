@@ -5,6 +5,8 @@ class Callbacks2Controller < ApplicationController
     :completed=>{:controller=>:main, :action=>:finished}, 
     :canceled=>'/main/canceled'#{:controller=>:main, :action=>:canceled}
 
+  #NOTE: these only for testing - the preferred method of defining callbacks is
+  # using the callback macros -- see Callbacks3Controller and the Readme.rdoc ;)
   def on_post_second_form
     redirect_to '/main/index#on_post_second_form'
   end

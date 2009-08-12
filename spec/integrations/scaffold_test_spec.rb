@@ -1,4 +1,5 @@
 require File.dirname(__FILE__) + '/../spec_helper'
+require 'step_helpers'
 
 require 'rails_generator'
 require 'rails_generator/scripts/generate'  
@@ -36,6 +37,8 @@ end
 
 describe "ScaffoldTestController" do
   include TestVariables
-  
+  include StepHelpers
+
+  it_should_behave_like "form data using sandbox"
   it_should_behave_like "all implementations"
 end

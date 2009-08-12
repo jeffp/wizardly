@@ -117,7 +117,7 @@ for both cases
     act_wizardly_for :user, :redirect=>'/main'
   end
 
-==== Other options
+==== act_wizardly_for Options List
 
 Here's a list of options you can use in the macro
 
@@ -125,9 +125,40 @@ Here's a list of options you can use in the macro
   :canceled => {:controller=>'main', :action=>'canceled'}
   :skip => true
   :mask_fields => [:password, :password_confirmation] (by default)
+  :persist_model => {:once|:per_page}
+  :form_data => {:sandbox|:session}
 
 Setting the :skip option to +true+ tells the scaffold helpers to include or exclude a skip button on each page.  
 The :mask_fields options tells the scaffold generator which fields to generate as 'type=password' fields.
+:persist_model and :form_data are explained below.
+
+==== Preserving Form Field Data
+
+The :form_data option controls how the form data is preserved between 
+page requests that call outside the wizard controller.  The default option setting
+:session keeps the form data until the wizard is complete regardless of 
+whether the user leaves the wizard and returns later.  The form
+data is preserved for the life of the session.
+
+The other option setting, :sandbox, clears the form data whenever 
+the user leaves the wizard before the wizard is complete.  This includes pressing
+a :cancel button, a hyperlink or plainly navigating somewhere else. 
+Upon returning to the wizard, the form is reset and the user starts fresh.
+
+The form data is always cleared once the user has completed the wizard and the
+database record has been created.
+
+==== Saving The Model
+
+The :persist_model option controls how the model is saved, either :once or :per_page.
+The default option :once, only saves the model when the wizard is completed, by the 
+user pressing a :finish button or :next button on the final page.  This method 
+prevents numerous incomplete models and possibly invalid models being saved to the
+database.
+
+The other option setting, :per_page, saves the model incrementally for each time 
+the form data validates as the user moves through the pages.  
+ 
 
 === Buttons
 
@@ -262,6 +293,24 @@ call back for this.
       ...
     end
   end
+
+=== Creating Scaffolds
+
+Wizard scaffolds can be created for any wizardly controller (one using the acts_wizardly_for
+macro).  
+
+  ./script/generate wizardly_scaffold controller_name
+
+The wizardly_scaffold generator will create HTML view scaffolds by default.  Append a
+--haml option to create scaffolds in HAML.  
+
+Sometimes you have already edited views from a scaffold but want to regenerate the 
+scaffold because of changes to your model without overwriting the current views.  
+Use the --underscore option to create corresponding views with an underscore prefixing
+each page.  
+
+  ./script/generate wizardly_scaffold controller_name --underscore
+
 
 == Advanced Configuration 
 

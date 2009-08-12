@@ -1,4 +1,5 @@
 require File.dirname(__FILE__) + '/../spec_helper'
+require 'step_helpers'
 
 #require 'rails_generator'
 #require 'rails_generator/scripts/generate'
@@ -13,7 +14,7 @@ module TestVariables
   def init_page; "init"; end
   def second_page; "second"; end
   def finish_page; "finish"; end
-  def blank_error; "*can't be blank"; end
+  def blank_error; "can't be blank"; end
   def back_button; "back"; end
   def next_button; "next"; end
   def skip_button; "skip"; end
@@ -38,6 +39,9 @@ end
 
 describe "GeneratedController" do
   include TestVariables
+  include StepHelpers
   
+  it_should_behave_like "form data using session"
   it_should_behave_like "all implementations"
 end
+

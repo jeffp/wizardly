@@ -16,6 +16,7 @@ class WizardlyScaffoldGenerator < Rails::Generator::Base
   def add_options!(opt)
     opt.on('--haml', 'Generate scaffold for haml wizard') { |v| options[:output] = :haml }
     opt.on('--ajax', 'Generate scaffold for ajax wizard') { |v| options[:output] = :ajax }
+    opt.on('--underscore', 'Append an underscore to front of each file') { |v| options[:underscore] = true }
   end
   
   
@@ -62,10 +63,11 @@ class WizardlyScaffoldGenerator < Rails::Generator::Base
       #m.directory(File.join('test/functional', controller_class_path))
       #m.directory(File.join('public/stylesheets', class_path))
 
+      underscore = options[:underscore] ? '_' : ''
       pages.each do |id, page|
         m.template(
           "form.#{view_file_ext.first}",
-          File.join('app/views', controller_class_path, controller_name, "#{id}.#{view_file_ext.last}"),
+          File.join('app/views', controller_class_path, controller_name, "#{underscore}#{id}.#{view_file_ext.last}"),
           :assigns=>{:id=>id, :page=>page}
         )
       end

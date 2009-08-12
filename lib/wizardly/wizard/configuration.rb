@@ -8,14 +8,20 @@ module Wizardly
   module Wizard
     class Configuration
       attr_reader :pages, :completed_redirect, :canceled_redirect, :controller_name, :page_order
+      
+      #enum_attr :persistance, %w(sandbox session database)
 
       def initialize(controller_name, opts) #completed_redirect = nil, canceled_redirect = nil)
         @controller_name = controller_name
         @completed_redirect = opts[:redirect] || opts[:completed] || opts[:when_completed] #format_redirect(completed_redirect)
         @canceled_redirect = opts[:redirect] || opts[:canceled] || opts[:when_canceled]
         @allow_skipping = opts[:skip] || opts[:allow_skip] || opts[:allow_skipping] || false
-        @guard_entry = opts.key?(:guard) ? opts[:guard] : true        
+        @guard_entry = opts.key?(:guard) ? opts[:guard] : true
         @password_fields = opts[:mask_fields] || opts[:mask_passwords] || [:password, :password_confirmation]
+        @persist_model = opts[:persist_model] || :once
+        @form_data = opts[:form_data] || :session
+        raise(ArgumentError, ":persist_model option must be one of :once or :per_page", caller) unless [:once, :per_page].include?(@persist_model)
+        raise(ArgumentError, ":form_data option must be one of :sandbox or :session", caller) unless [:sandbox, :session].include?(@form_data)
         @page_order = []
         @pages = {}
         @buttons = nil
@@ -25,6 +31,8 @@ module Wizardly
         end
       end
 
+      def persist_model_per_page?; @persist_model == :per_page; end
+      def form_data_keep_in_session?; @form_data == :session; end
       def model; @wizard_model_sym; end
       def model_instance_variable; "@#{@wizard_model_sym.to_s}"; end
       def model_class_name; @wizard_model_class_name; end
