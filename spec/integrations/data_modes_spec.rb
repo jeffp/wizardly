@@ -89,6 +89,7 @@ describe "DataModesController" do
     field_with_id(/gender/).value.should == field_gender
     field_with_id(/programmer/).value.should == (field_programmer ? "1":"0")
     field_with_id(/status/).value.should == field_status    
+    click_button next_button
   end
 
   

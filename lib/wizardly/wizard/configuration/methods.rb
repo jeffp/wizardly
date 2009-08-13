@@ -105,7 +105,7 @@ MACRO
         return
       end
       save_wizard_model! if wizard_config.persist_model_per_page?
-      session[:progression] = [:#{id}]
+      # session[:progression] = [:#{id}]
       return if callback_performs_action?(:on_#{id}_form_#{next_button})
       redirect_to :action=>:#{self.next_page(id)}
         THREE
@@ -118,7 +118,7 @@ MACRO
         return
       end
       save_wizard_model! if wizard_config.persist_model_per_page?
-      session[:progression].push(:#{id})
+      # session[:progression].push(:#{id})
       return if callback_performs_action?(:on_#{id}_form_#{next_button})
       redirect_to :action=>:#{self.next_page(id)}
         FOUR
@@ -151,7 +151,8 @@ ENSURE
   end
   def _on_wizard_#{back}
     # TODO: fix progression management
-    redirect_to(:action=>((session[:progression]||[]).pop || :#{self.page_order.first})) unless self.performed?
+    # redirect_to(:action=>((session[:progression]||[]).pop || :#{self.page_order.first})) unless self.performed?
+    redirect_to(:action=>wizard_config.previous_page(@step)) unless self.performed?
   end
   def _on_wizard_#{cancel}
     _wizard_final_redirect_to(:canceled)

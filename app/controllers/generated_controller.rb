@@ -40,7 +40,7 @@ class GeneratedController < ApplicationController
         return
       end
       save_wizard_model! if wizard_config.persist_model_per_page?
-      session[:progression].push(:second)
+      # session[:progression].push(:second)
       return if callback_performs_action?(:on_second_form_next)
       redirect_to :action=>:finish
     ensure
@@ -83,7 +83,7 @@ class GeneratedController < ApplicationController
         return
       end
       save_wizard_model! if wizard_config.persist_model_per_page?
-      session[:progression] = [:init]
+      # session[:progression] = [:init]
       return if callback_performs_action?(:on_init_form_next)
       redirect_to :action=>:second
     ensure
@@ -145,7 +145,8 @@ class GeneratedController < ApplicationController
   end
   def _on_wizard_back
     # TODO: fix progression management
-    redirect_to(:action=>((session[:progression]||[]).pop || :init)) unless self.performed?
+    # redirect_to(:action=>((session[:progression]||[]).pop || :init)) unless self.performed?
+    redirect_to(:action=>wizard_config.previous_page(@step)) unless self.performed?
   end
   def _on_wizard_cancel
     _wizard_final_redirect_to(:canceled)

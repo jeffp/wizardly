@@ -2,11 +2,11 @@
 
 Gem::Specification.new do |s|
   s.name = %q{wizardly}
-  s.version = "0.1.7"
+  s.version = "0.1.8"
 
   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
   s.authors = ["Jeff Patmon"]
-  s.date = %q{2009-08-11}
+  s.date = %q{2009-08-12}
   s.description = %q{Create wizards from any model in three steps}
   s.email = %q{jpatmon@yahoo.com}
   s.files = ["lib/generators", "lib/jeffp-wizardly.rb", "lib/validation_group.rb", "lib/wizardly", "lib/wizardly/action_controller.rb", "lib/wizardly/wizard", "lib/wizardly/wizard/button.rb", "lib/wizardly/wizard/configuration", "lib/wizardly/wizard/configuration/methods.rb", "lib/wizardly/wizard/configuration.rb", "lib/wizardly/wizard/dsl.rb", "lib/wizardly/wizard/page.rb", "lib/wizardly/wizard/text_helpers.rb", "lib/wizardly/wizard/utils.rb", "lib/wizardly/wizard.rb", "lib/wizardly.rb", "rails_generators/wizardly_app", "rails_generators/wizardly_app/templates", "rails_generators/wizardly_app/templates/wizardly.rake", "rails_generators/wizardly_app/USAGE", "rails_generators/wizardly_app/wizardly_app_generator.rb", "rails_generators/wizardly_controller", "rails_generators/wizardly_controller/templates", "rails_generators/wizardly_controller/templates/controller.rb.erb", "rails_generators/wizardly_controller/templates/helper.rb.erb", "rails_generators/wizardly_controller/USAGE", "rails_generators/wizardly_controller/wizardly_controller_generator.rb", "rails_generators/wizardly_scaffold", "rails_generators/wizardly_scaffold/templates", "rails_generators/wizardly_scaffold/templates/form.html.erb", "rails_generators/wizardly_scaffold/templates/form.html.haml.erb", "rails_generators/wizardly_scaffold/templates/helper.rb.erb", "rails_generators/wizardly_scaffold/templates/layout.html.erb", "rails_generators/wizardly_scaffold/templates/layout.html.haml.erb", "rails_generators/wizardly_scaffold/templates/style.css", "rails_generators/wizardly_scaffold/USAGE", "rails_generators/wizardly_scaffold/wizardly_scaffold_generator.rb", "CHANGELOG.rdoc", "init.rb", "LICENSE", "README.rdoc"]

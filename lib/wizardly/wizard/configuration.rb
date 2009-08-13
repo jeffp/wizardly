@@ -45,6 +45,11 @@ module Wizardly
         index += 1 unless self.last_page?(name)
         @page_order[index]
       end
+      def previous_page(name)
+        index = @page_order.index(name)
+        index -= 1 unless self.first_page?(name)
+        @page_order[index]
+      end
       def button_for_function(name); @default_buttons[name]; end
       def buttons
         return @buttons if @buttons
