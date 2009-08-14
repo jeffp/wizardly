@@ -32,18 +32,5 @@ module Wizardly
     public
     def wizard_config; self.class.wizard_config; end
 
-    private
-    def reset_wizard_session_vars
-      session[:progression] = nil
-      init = session[:initial_referer]
-      session[:initial_referer] = nil
-      init
-    end
-
-    # better name: underscore_button_name, changes submit_tag button names like
-    # 'Next Step' ==> 'next_step', used to identify callback methods
-    def methodize_button_name(value)
-      value.to_s.strip.squeeze(' ').gsub(/ /, '_').downcase
-    end
   end
 end

@@ -31,7 +31,7 @@ end
 describe "MacroController" do
   include TestVariables
   include StepHelpers
-  
+
   it_should_behave_like "form data using sandbox"
   it_should_behave_like "all implementations"
 end

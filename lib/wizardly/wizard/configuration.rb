@@ -31,6 +31,7 @@ module Wizardly
         end
       end
 
+      def guard?; @guard_entry; end
       def persist_model_per_page?; @persist_model == :per_page; end
       def form_data_keep_in_session?; @form_data == :session; end
       def model; @wizard_model_sym; end

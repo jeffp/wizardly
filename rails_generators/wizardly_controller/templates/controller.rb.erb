@@ -13,19 +13,6 @@ class <%= controller_class_name %> < ApplicationController
 
   <%= callback_macro_methods %>
 
-  private
-  def methodize_button_name(value)
-    value.to_s.strip.squeeze(' ').gsub(/ /, '_').downcase
-  end
-
-  def reset_wizard_session_vars
-    session[:progression] = nil
-    init = session[:initial_referer]
-    session[:initial_referer] = nil
-    init
-  end
-  hide_action :methodize_button_name, :reset_wizard_session_vars
-
   public
   def wizard_config; self.class.wizard_config; end
   hide_action :wizard_config
