@@ -147,7 +147,7 @@ ENSURE
     _wizard_final_redirect_to(:completed)
   end
   def _on_wizard_#{skip}
-    session[:progression] -= [params[:action]]
+    session[:progression] = (session[:progression]||[]) - [@step]
     redirect_to(:action=>wizard_config.next_page(@step)) unless self.performed?
   end
   def _on_wizard_#{back} 
@@ -207,12 +207,16 @@ PROGRESSION
     end
     # coming from outside the controller
     #{guard_line}
-    if (self.wizard_form_data || (params[:action]||'') == '#{first_page}')
+    if (params[:action] == '#{first_page}' || params[:action] == 'index')
       return check_progression
+    elsif self.wizard_form_data
+      p = session[:progression]||[]
+      return check_progression if p.include?(params[:action].to_sym)
+      return redirect_to(:action=>(p.last||:#{first_page}))
     end
     redirect_to :action=>:#{first_page}
   end
-  hide_action :guard_entry          
+  hide_action :guard_entry
 
 SESSION
         else

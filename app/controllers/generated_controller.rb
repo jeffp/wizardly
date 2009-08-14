@@ -139,7 +139,7 @@ class GeneratedController < ApplicationController
     _wizard_final_redirect_to(:completed)
   end
   def _on_wizard_skip
-    session[:progression] -= [params[:action]]
+    session[:progression] = (session[:progression]||[]) - [@step]
     redirect_to(:action=>wizard_config.next_page(@step)) unless self.performed?
   end
   def _on_wizard_back 
@@ -188,12 +188,16 @@ class GeneratedController < ApplicationController
     end
     # coming from outside the controller
     
-    if (self.wizard_form_data || (params[:action]||'') == 'init')
+    if (params[:action] == 'init' || params[:action] == 'index')
       return check_progression
+    elsif self.wizard_form_data
+      p = session[:progression]||[]
+      return check_progression if p.include?(params[:action].to_sym)
+      return redirect_to(:action=>(p.last||:init))
     end
     redirect_to :action=>:init
   end
-  hide_action :guard_entry          
+  hide_action :guard_entry
 
   def save_wizard_model!
     @user.save_without_validation!
@@ -368,23 +372,6 @@ class GeneratedController < ApplicationController
       self.send(:define_method, sprintf("on_%s_form_skip", form.to_s), &block )
     end
   end
-  def self.on_finish(*args, &block)
-    return if args.empty?
-    all_forms = [:init, :second, :finish]
-    if args.include?(:all)
-      forms = all_forms
-    else
-      forms = args.map do |fa|
-        unless all_forms.include?(fa)
-          raise(ArgumentError, ":"+fa.to_s+" in callback on_finish is not a form defined for the wizard", caller)
-        end
-        fa
-      end
-    end
-    forms.each do |form|
-      self.send(:define_method, sprintf("on_%s_form_finish", form.to_s), &block )
-    end
-  end
   def self.on_next(*args, &block)
     return if args.empty?
     all_forms = [:init, :second, :finish]
@@ -417,6 +404,23 @@ class GeneratedController < ApplicationController
     end
     forms.each do |form|
       self.send(:define_method, sprintf("on_%s_form_cancel", form.to_s), &block )
+    end
+  end
+  def self.on_finish(*args, &block)
+    return if args.empty?
+    all_forms = [:init, :second, :finish]
+    if args.include?(:all)
+      forms = all_forms
+    else
+      forms = args.map do |fa|
+        unless all_forms.include?(fa)
+          raise(ArgumentError, ":"+fa.to_s+" in callback on_finish is not a form defined for the wizard", caller)
+        end
+        fa
+      end
+    end
+    forms.each do |form|
+      self.send(:define_method, sprintf("on_%s_form_finish", form.to_s), &block )
     end
   end
 

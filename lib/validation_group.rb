@@ -43,7 +43,18 @@ module ValidationGroup
     end
 
     module InstanceMethods # included in every model which calls validation_group
-			
+      #needs testing
+#      def reset_validation_group(group)
+#        group_classes = self.class.validation_group_classes
+#        found = ValidationGroup::Util.current_and_ancestors(self.class).find do |klass|
+#          group_classes[klass] && group_classes[klass].include?(group)
+#        end
+#        if found
+#          group_classes[found][group].each do |field|
+#            self[field] = nil
+#          end
+#        end
+#      end
       def enable_validation_group(group)
         # Check if given validation group is defined for current class or one of
         # its ancestors

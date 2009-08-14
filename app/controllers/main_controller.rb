@@ -4,7 +4,17 @@ class MainController < ApplicationController
       :macro=>'/macro',
       :generated=>'/generated',
       :scaffold_test=>'/scaffold_test',
-      :callbacks=>'/callbacks'
+      :callbacks=>'/callbacks',
+      :session=>'/session',
+      :session_init=>'/session/init',
+      :session_second=>'/session/second',
+      :session_third=>'/session/third',
+      :session_finish=>'/session/finish',
+      :sandbox=>'/sandbox',
+      :sandbox_init=>'/sandbox/init',
+      :sandbox_second=>'/sandbox/second',
+      :sandbox_third=>'/sandbox/third',
+      :sandbox_finish=>'/sandbox/finish'
     }
   end
 

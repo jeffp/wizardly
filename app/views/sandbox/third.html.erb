@@ -1,0 +1,26 @@
+<h1>Third</h1>
+
+
+<%= "<p style=\"color: green\">#{flash[:notice]}<p>" if flash[:notice] %>
+
+<% form_for :four_step_user, :url=>{:action=>:third}  do |f| %>
+  <%= f.error_messages %>
+
+  
+  <p>
+    <%= f.label :programmer %><br />
+    <%= f.check_box :programmer %>
+  </p>
+  
+  <p>
+    <%= f.label :status %><br />
+    <%= f.text_field :status %>
+  </p>
+  <p>
+    <%= wizardly_submit %>
+  </p>
+<% end %>
+
+<script type='text/javascript'>
+  document.getElementById('four_step_user_programmer').focus()
+</script>

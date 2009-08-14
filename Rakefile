@@ -39,7 +39,7 @@ require 'spec/rake/spectask'
 
 namespace :spec do
   desc "Run all specs"
-  task :all=>[:macro, :gen, :scaffold, :callback, :callback2, :callback3, :datamodes]
+  task :all=>[:macro, :gen, :scaffold, :callback, :callback2, :callback3, :datamodes, :sandbox, :session]
   desc "Test the MacroController"
   Spec::Rake::SpecTask.new(:macro) do |t|
     t.spec_files = FileList['spec/integrations/macro_spec.rb']
@@ -50,6 +50,20 @@ namespace :spec do
   desc "Test the DataModesController"
   Spec::Rake::SpecTask.new(:datamodes) do |t|
     t.spec_files = FileList['spec/integrations/data_modes_spec.rb']
+    t.libs << 'lib' << 'spec' << 'spec/integrations'
+    t.spec_opts = ['--options', 'spec/spec.opts']    
+    t.rcov = false
+  end
+  desc "Test the SandboxController"
+  Spec::Rake::SpecTask.new(:sandbox) do |t|
+    t.spec_files = FileList['spec/integrations/sandbox_spec.rb']
+    t.libs << 'lib' << 'spec' << 'spec/integrations'
+    t.spec_opts = ['--options', 'spec/spec.opts']    
+    t.rcov = false
+  end
+  desc "Test the SessionController"
+  Spec::Rake::SpecTask.new(:session) do |t|
+    t.spec_files = FileList['spec/integrations/session_spec.rb']
     t.libs << 'lib' << 'spec' << 'spec/integrations'
     t.spec_opts = ['--options', 'spec/spec.opts']    
     t.rcov = false
