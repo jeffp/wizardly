@@ -4,9 +4,9 @@
 
 == Resources
 
-Development
+Examples
 
-* http://github.com/jeffp/wizardly
+* http://github.com/jeffp/wizardly-examples
 
 Source
 
