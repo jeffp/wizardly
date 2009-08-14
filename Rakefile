@@ -14,7 +14,7 @@ require 'fileutils'
 
 spec = Gem::Specification.new do |s|
   s.name = 'wizardly'
-  s.version = '0.1.8'
+  s.version = '0.1.8.1'
   s.platform = Gem::Platform::RUBY
   s.description = 'Create wizards from any model in three steps'
   s.summary = 'Produces controllers and wizard scaffolding for models with validation_groups'
