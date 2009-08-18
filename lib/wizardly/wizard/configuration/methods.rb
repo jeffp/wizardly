@@ -53,16 +53,22 @@ MACRO
         INDEX
         mb.string
       end
-      
-      def persist_key; 
-        @persist_key ||= "wizardly_#{controller_name.to_s.underscore}_#{model}".to_sym 
-      end      
-    
+
+      def initial_referer_key
+        @initial_referer_key ||= "#{self.controller_path.sub(/\//, '')}_irk".to_sym
+      end
+      def persist_key;
+        @persist_key ||= "#{self.controller_path.sub(/\//, '')}_dat".to_sym 
+      end
+      def progression_key
+        @progression_key ||= "#{self.controller_path.sub(/\//, '')}_prg".to_sym
+      end
+
       def print_page_action_method(id)
         page = @pages[id]
         finish_button = self.button_for_function(:finish).id
         next_button = self.button_for_function(:next).id
-        model_persist_line = self.persist_model_per_page? ? 'save_wizard_model!' : ''
+        model_persist_line = self.persist_model_per_page? ? "@#{self.model}.save_without_validation!" : ''
 
         (mb = StringIO.new) << <<-ONE
   def #{page.name}
@@ -95,15 +101,13 @@ MACRO
         if self.last_page?(id)
           mb << <<-TWO
       callback_performs_action?(:on_#{id}_form_#{finish_button})
-      _on_wizard_#{finish_button}
-      redirect_to #{Utils.formatted_redirect(self.completed_redirect)} unless self.performed?
+      complete_wizard
         TWO
         elsif self.first_page?(id)
           mb << <<-THREE
       if button_id == :#{finish_button}
         callback_performs_action?(:on_#{id}_form_#{finish_button})
-        _on_wizard_#{finish_button} if button_id == :#{finish_button}
-        redirect_to #{Utils.formatted_redirect(self.completed_redirect)} unless self.performed?
+        complete_wizard
         return
       end
       #{model_persist_line}
@@ -114,8 +118,7 @@ MACRO
           mb << <<-FOUR
       if button_id == :#{finish_button}
         callback_performs_action?(:on_#{id}_form_#{finish_button})
-        _on_wizard_#{finish_button} if button_id == :#{finish_button}
-        redirect_to #{Utils.formatted_redirect(self.completed_redirect)} unless self.performed?
+        complete_wizard
         return
       end
       #{model_persist_line}
@@ -147,7 +150,7 @@ ENSURE
     _wizard_final_redirect_to(:completed)
   end
   def _on_wizard_#{skip}
-    session[:progression] = (session[:progression]||[]) - [@step]
+    self.progression = self.progression - [@step]
     redirect_to(:action=>wizard_config.next_page(@step)) unless self.performed?
   end
   def _on_wizard_#{back} 
@@ -156,12 +159,12 @@ ENSURE
   def _on_wizard_#{cancel}
     _wizard_final_redirect_to(:canceled)
   end
-  def _wizard_final_redirect_to(type) 
-    initial_referer = (type == :canceled && wizard_config.form_data_keep_in_session?) ?
-      session[:initial_referer] :
+  def _wizard_final_redirect_to(type)
+    init = (type == :canceled && wizard_config.form_data_keep_in_session?) ?
+      self.initial_referer :
       reset_wizard_session_vars
     unless self.performed?
-      redir = (type == :canceled ? wizard_config.canceled_redirect : wizard_config.completed_redirect) || initial_referer
+      redir = (type == :canceled ? wizard_config.canceled_redirect : wizard_config.completed_redirect) || init
       return redirect_to(redir) if redir
       raise Wizardly::RedirectNotDefinedError, "No redirect was defined for completion or canceling the wizard.  Use :completed and :canceled options to define redirects.", caller
     end
@@ -174,26 +177,27 @@ ENSURE
         next_id = self.button_for_function(:next).id
         finish_id = self.button_for_function(:finish).id
         first_page = self.page_order.first
+        finish_button = self.button_for_function(:finish).id        
         guard_line = self.guard? ? '' : 'return check_progression #guard entry disabled'
         mb = StringIO.new
         mb << <<-PROGRESSION
   protected
   def previous_in_progression_from(step)
-    po = wizard_config.page_order
-    p = session[:progression]||[]
+    po = #{self.page_order.inspect}
+    p = self.progression
     p -= po[po.index(step)..-1]
-    session[:progression] = p
+    self.progression = p
     p.last
   end
   def check_progression
-    p = session[:progression]||[]
+    p = self.progression
     a = params[:action].to_sym
     return if p.last == a
-    po = wizard_config.page_order
+    po = #{self.page_order.inspect}
     return unless (ai = po.index(a))
     p -= po[ai..-1]
     p << a
-    session[:progression] = p
+    self.progression = p
   end        
 PROGRESSION
         if self.form_data_keep_in_session?
@@ -203,14 +207,14 @@ PROGRESSION
     if (r = request.env['HTTP_REFERER'])
       h = ::ActionController::Routing::Routes.recognize_path(URI.parse(r).path)
       return check_progression if (h[:controller]||'') == '#{self.controller_name}'
-      session[:initial_referer] ||= h
+      self.initial_referer = h unless self.initial_referer
     end
     # coming from outside the controller
     #{guard_line}
     if (params[:action] == '#{first_page}' || params[:action] == 'index')
       return check_progression
     elsif self.wizard_form_data
-      p = session[:progression]||[]
+      p = self.progression
       return check_progression if p.include?(params[:action].to_sym)
       return redirect_to(:action=>(p.last||:#{first_page}))
     end
@@ -226,9 +230,9 @@ SESSION
     if (r = request.env['HTTP_REFERER'])
       h = ::ActionController::Routing::Routes.recognize_path(URI.parse(r).path)
       return check_progression if (h[:controller]||'') == '#{self.controller_name}'
-      session[:initial_referer] = h
+      self.initial_referer = h
     else
-      session[:initial_referer] = nil 
+      self.initial_referer = nil 
     end
     # coming from outside the controller
     reset_wizard_form_data 
@@ -241,24 +245,37 @@ SESSION
 SANDBOX
         end
         mb << <<-HELPERS
-  def save_wizard_model!
-    @#{self.model}.save_without_validation!
-    if wizard_config.form_data_keep_in_session?
-      h = self.wizard_form_data
-      h['id'] = @#{self.model}.id
-      self.wizard_form_data= h
-    end
+  def complete_wizard(redirect = nil)
+    redirect_to redirect if redirect
+    _on_wizard_#{finish_button}
+    redirect_to #{Utils.formatted_redirect(self.completed_redirect)} unless self.performed?
   end
   def build_wizard_model(params)
     if (wizard_config.persist_model_per_page? && (model_id = params['id']))
-      _model = #{self.model_class_name}.find(model_id)
-      _model.attributes = params
-      _model
-    else
-      #{self.model_class_name}.new(params)
+       begin
+        _model = #{self.model_class_name}.find(model_id) 
+        _model.attributes = params
+        return _model
+      rescue
+      end
     end
+    #{self.model_class_name}.new(params)
   end
   hide_action :build_wizard_model, :save_wizard_model!
+
+  def initial_referer
+    session[:#{self.initial_referer_key}]
+  end
+  def initial_referer=(val)
+    session[:#{self.initial_referer_key}] = val
+  end
+  def progression=(array)
+    session[:#{self.progression_key}] = array
+  end
+  def progression
+    session[:#{self.progression_key}]||[]
+  end
+  hide_action :progression, :progression=
 
   def wizard_form_data=(hash)
     if wizard_config.form_data_keep_in_session?
@@ -291,9 +308,9 @@ SANDBOX
   hide_action :underscore_button_name
 
   def reset_wizard_session_vars
-    session[:progression] = nil
-    init = session[:initial_referer]
-    session[:initial_referer] = nil
+    self.progression = nil
+    init = self.initial_referer
+    self.initial_referer = nil
     init
   end
   hide_action :reset_wizard_session_vars
@@ -319,9 +336,19 @@ SANDBOX
   end
   hide_action :check_action_for_button
 
-  def callback_performs_action?(methId, arg=nil)
-    return false unless self.methods.include?(methId.to_s)
-    #self.__send__(methId)
+  @wizard_callbacks ||= {}
+  def self.wizard_callbacks; @wizard_callbacks; end
+
+  def callback_performs_action?(methId)
+    cache = self.class.wizard_callbacks
+    return false if ((m = cache[methId]) == :none)
+    unless m == :found
+      unless self.methods.include?(methId.to_s)
+        cache[methId] = :none
+        return false
+      end
+      cache[methId] = :found
+    end
     self.method(methId).call
     self.performed?
   end

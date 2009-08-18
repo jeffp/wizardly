@@ -39,7 +39,7 @@ require 'spec/rake/spectask'
 
 namespace :spec do
   desc "Run all specs"
-  task :all=>[:macro, :gen, :scaffold, :callback, :callback2, :callback3, :datamodes, :sandbox, :session]
+  task :all=>[:macro, :gen, :scaffold, :callback, :callback2, :callback3, :persist, :sandbox, :session]
   desc "Test the MacroController"
   Spec::Rake::SpecTask.new(:macro) do |t|
     t.spec_files = FileList['spec/integrations/macro_spec.rb']
@@ -47,8 +47,15 @@ namespace :spec do
     t.spec_opts = ['--options', 'spec/spec.opts']    
     t.rcov = false
   end
+  desc "Test the DataModes2Controller"
+  Spec::Rake::SpecTask.new(:persist2) do |t|
+    t.spec_files = FileList['spec/integrations/data_modes2_spec.rb']
+    t.libs << 'lib' << 'spec' << 'spec/integrations'
+    t.spec_opts = ['--options', 'spec/spec.opts']    
+    t.rcov = false
+  end
   desc "Test the DataModesController"
-  Spec::Rake::SpecTask.new(:datamodes) do |t|
+  Spec::Rake::SpecTask.new(:persist) do |t|
     t.spec_files = FileList['spec/integrations/data_modes_spec.rb']
     t.libs << 'lib' << 'spec' << 'spec/integrations'
     t.spec_opts = ['--options', 'spec/spec.opts']    

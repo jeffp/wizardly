@@ -1,0 +1,26 @@
+<h1>Init</h1>
+
+
+<%= "<p style=\"color: green\">#{flash[:notice]}<p>" if flash[:notice] %>
+
+<% form_for :user, :url=>{:action=>:init}  do |f| %>
+  <%= f.error_messages %>
+
+  
+  <p>
+    <%= f.label :first_name %><br />
+    <%= f.text_field :first_name %>
+  </p>
+  
+  <p>
+    <%= f.label :last_name %><br />
+    <%= f.text_field :last_name %>
+  </p>
+  <p>
+    <%= wizardly_image_submit %>
+  </p>
+<% end %>
+
+<script type='text/javascript'>
+  document.getElementById('user_first_name').focus()
+</script>

@@ -34,7 +34,7 @@ Features include:
 
 Put the following in your application's config block in config/environment.rb
 
-  config.gem 'jeffp-wizardly', :lib=>'wizardly' 
+  config.gem 'jeffp-wizardly', :lib=>'wizardly'
 
 and run the install gems rake task on your application
 
@@ -44,6 +44,20 @@ For any rails app, run the following to install wizardly rake tasks (optional)
 
   ./script/generate wizardly_app
 
+== Recommendations
+
+Wizardly uses sessions.  It is recommended you use a session store other than the  
+default cookies store to eliminate the 4KB size restriction.  To use the active 
+record store, add this line to your environment.rb
+
+  config.action_controller.session_store = :active_record_store
+
+And set up the sessions table in the database
+
+  rake db:sessions:create
+  rake db:migrate
+
+Use the MemCached session store for higher performance requirements.
 
 == Example
 
@@ -69,7 +83,9 @@ Step 3: Generate a 'wizardly' scaffold for your controller.
 
 You are ready to go.
 
-General usage and configuration of wizardly follows.
+General usage and configuration of wizardly follows.  See the examples at
+
+  http://github.com/jeffp/wizardly-examples
 
 == Usage
 
@@ -312,6 +328,23 @@ call back for this.
     end
   end
 
+=== Completing the Wizard Programmatically
+
+Perhaps you want to complete a wizard based off of a test instead of a button
+click.  You can do this in your callbacks by calling the +complete_wizard+ method.
+
+  on_next(:step4) do
+    if (test_radio_button)
+      complete_wizard
+    end
+  end
+
+Complete wizard will save the model and redirect to the :completed redirect setting.
+You can change the redirect dynamically by passing it to the method.
+
+  complete_wizard(some_model_path)
+
+
 === Creating Scaffolds
 
 Wizard scaffolds can be created for any wizardly controller (one using the acts_wizardly_for
@@ -329,6 +362,11 @@ each page.
 
   ./script/generate wizardly_scaffold controller_name --underscore
 
+You can create a scaffold using image_submit_tag by doing the following:
+
+  ./script/generate wizardly_scaffold controller_name --image_submit
+
+Default button images are provided under the public/images/wizardly/ directory.
 
 == Advanced Configuration 
 
@@ -336,7 +374,7 @@ To be provided
 
 == Testing
 
-Testing uses RSpec and Webrat.  Make sure you have those gems installed.  Then 
+Testing uses RSpec and Webrat.  Make sure you have the gems installed.  Then 
 to test the development code run the following:
 
   rake spec:all  

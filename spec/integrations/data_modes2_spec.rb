@@ -20,16 +20,16 @@ module TestVariables
   def field_password; "password"; end
   def field_password_confirmation; field_password; end
   def field_username; "johndoe"; end
-  def index_page_path; '/data_modes/index'; end
-  def finish_page_path; '/data_modes/finish'; end
-  def second_page_path; '/data_modes/second'; end
-  def init_page_path; '/data_modes/init'; end
+  def index_page_path; '/data_modes2/index'; end
+  def finish_page_path; '/data_modes2/finish'; end
+  def second_page_path; '/data_modes2/second'; end
+  def init_page_path; '/data_modes2/init'; end
   def main_finished_path; '/main/finished'; end
   def main_canceled_path; '/main/canceled'; end
 end
 
-#testing :persist_model=>:per_page, :form_data=>:session
-describe "DataModesController" do
+#testing :persist_model=>:per_page, :form_data=>:sandbox
+describe "DataModes2Controller" do
   include TestVariables
   include StepHelpers
 
@@ -76,12 +76,12 @@ describe "DataModesController" do
     field_with_id(/last/).value.should be_blank
     fill_in_init_page
     click_button cancel_button
-    step_to_init_page
-    field_with_id(/first/).value.should == field_first_name
-    field_with_id(/last/).value.should == field_last_name
+    visit init_page_path
+    field_with_id(/first/).value.should be_blank
+    field_with_id(/last/).value.should be_blank
   end
   
-  it "should fill in second page, leave and return to second page directly" do
+  it "should fill in second page, leave and return to init page when trying to return to second page directly" do
     User.delete_all
     step_to_second_page
     current_url.should include(second_page)
@@ -90,16 +90,14 @@ describe "DataModesController" do
     fill_in_second_page
     click_button cancel_button
     visit '/data_modes/'+ second_page
-    current_url.should include(second_page)
-    field_with_id(/age/).value.should == field_age.to_s
-    field_with_id(/gender/).value.should == field_gender
-    field_with_id(/programmer/).value.should == (field_programmer ? "1":"0")
-    field_with_id(/status/).value.should == field_status    
+    current_url.should include(init_page)
+    field_with_id(/first/).value.should be_blank
+    field_with_id(/last/).value.should be_blank    
     click_button next_button
   end
 
   
-  it_should_behave_like "form data using session"
+  it_should_behave_like "form data using sandbox"
   it_should_behave_like "all implementations"
   
 end

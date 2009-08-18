@@ -14,7 +14,8 @@ class MainController < ApplicationController
       :sandbox_init=>'/sandbox/init',
       :sandbox_second=>'/sandbox/second',
       :sandbox_third=>'/sandbox/third',
-      :sandbox_finish=>'/sandbox/finish'
+      :sandbox_finish=>'/sandbox/finish',
+      :image_submit=>'/image_submit'
     }
   end
 

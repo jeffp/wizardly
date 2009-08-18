@@ -16,7 +16,7 @@
     %br
     = f.<%= field.field_type %> :<%= field.name %>
 <% end %>
-  %p= wizardly_submit
+  %p= <%= submit_tag %>
 
 %script{:type=>'text/javascript'} 
   document.getElementById('<%=first_field_id %>').focus()

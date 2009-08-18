@@ -7,12 +7,15 @@ require 'wizardly/wizard/configuration/methods'
 module Wizardly
   module Wizard
     class Configuration
-      attr_reader :pages, :completed_redirect, :canceled_redirect, :controller_name, :page_order
+      attr_reader :pages, :completed_redirect, :canceled_redirect, :controller_path, :controller_class_name, :controller_name, :page_order
       
       #enum_attr :persistance, %w(sandbox session database)
 
-      def initialize(controller_name, opts) #completed_redirect = nil, canceled_redirect = nil)
-        @controller_name = controller_name
+      def initialize(controller, opts) #completed_redirect = nil, canceled_redirect = nil)
+        @controller_class_name = controller.to_s.camelcase
+        @controller_class_name += 'Controller' unless @controller_class_name =~ /Controller$/
+        @controller_path = @controller_class_name.sub(/Controller$/,'').underscore
+        @controller_name = @controller_class_name.demodulize.sub(/Controller$/,'').underscore
         @completed_redirect = opts[:redirect] || opts[:completed] || opts[:when_completed] #format_redirect(completed_redirect)
         @canceled_redirect = opts[:redirect] || opts[:canceled] || opts[:when_canceled]
         @allow_skipping = opts[:skip] || opts[:allow_skip] || opts[:allow_skipping] || false
@@ -59,7 +62,7 @@ module Wizardly
       end
     
       def self.create(controller_name, model_name, opts={}, &block)
-        controller_name = controller_name.to_s.underscore.sub(/_controller$/, '').to_sym
+        # controller_name = controller_name.to_s.underscore.sub(/_controller$/, '').to_sym
         model_name = model_name.to_s.underscore.to_sym
         config = Wizardly::Wizard::Configuration.new(controller_name, opts)
         config.inspect_model!(model_name)

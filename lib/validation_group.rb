@@ -44,7 +44,7 @@ module ValidationGroup
 
     module InstanceMethods # included in every model which calls validation_group
       #needs testing
-#      def reset_validation_group(group)
+#      def reset_fields_for_validation_group(group)
 #        group_classes = self.class.validation_group_classes
 #        found = ValidationGroup::Util.current_and_ancestors(self.class).find do |klass|
 #          group_classes[klass] && group_classes[klass].include?(group)

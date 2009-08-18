@@ -5,7 +5,7 @@ class WizardlyControllerGenerator < Rails::Generator::Base
   
   def initialize(runtime_args, runtime_options = {})
     super
-    @controller_name = @args[0].sub(/^:/, '').underscore
+    @controller_name = @args[0].sub(/^:/,'')
     @model_name = @args[1].sub(/^:/, '').underscore
     @completed_redirect = @args[2]
     @canceled_redirect = @args[3]
@@ -13,7 +13,7 @@ class WizardlyControllerGenerator < Rails::Generator::Base
     opts[:completed] = @completed_redirect if @completed_redirect
     opts[:canceled] = @canceled_redirect if @canceled_redirect
     
-    @wizard_config = Wizardly::Wizard::Configuration.new(@controller_name.to_sym, opts)
+    @wizard_config = Wizardly::Wizard::Configuration.new(@controller_name, opts)
     @wizard_config.inspect_model!(@model_name.to_sym)
   end
   

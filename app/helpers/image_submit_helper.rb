@@ -1,4 +1,4 @@
-module <%=controller_name.camelize %>Helper
+module ImageSubmitHelper
   
   def wizardly_submit
     @@wizardly_submit ||= {}

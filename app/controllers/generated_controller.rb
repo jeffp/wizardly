@@ -6,6 +6,41 @@ class GeneratedController < ApplicationController
   before_filter :guard_entry
 
   
+  # finish action method
+  def finish
+    begin
+      @step = :finish
+      @wizard = wizard_config
+      @title = 'Finish'
+      @description = ''
+      h = (self.wizard_form_data||{}).merge(params[:user] || {}) 
+      @user = build_wizard_model(h)
+      if request.post? && callback_performs_action?(:on_post_finish_form)
+        raise CallbackError, "render or redirect not allowed in :on_post_finish_form callback", caller
+      end
+      button_id = check_action_for_button
+      return if performed?
+      if request.get?
+        return if callback_performs_action?(:on_get_finish_form)
+        render_wizard_form
+        return
+      end
+
+      # @user.enable_validation_group :finish
+      unless @user.valid?(:finish)
+        return if callback_performs_action?(:on_invalid_finish_form)
+        render_wizard_form
+        return
+      end
+
+      callback_performs_action?(:on_finish_form_finish)
+      complete_wizard
+    ensure
+      self.wizard_form_data = h.merge(@user.attributes) if (@user && !@wizard_completed_flag)
+    end
+  end        
+
+
   # second action method
   def second
     begin
@@ -35,8 +70,7 @@ class GeneratedController < ApplicationController
 
       if button_id == :finish
         callback_performs_action?(:on_second_form_finish)
-        _on_wizard_finish if button_id == :finish
-        redirect_to '/main/finished' unless self.performed?
+        complete_wizard
         return
       end
       
@@ -77,49 +111,12 @@ class GeneratedController < ApplicationController
 
       if button_id == :finish
         callback_performs_action?(:on_init_form_finish)
-        _on_wizard_finish if button_id == :finish
-        redirect_to '/main/finished' unless self.performed?
+        complete_wizard
         return
       end
       
       return if callback_performs_action?(:on_init_form_next)
       redirect_to :action=>:second
-    ensure
-      self.wizard_form_data = h.merge(@user.attributes) if (@user && !@wizard_completed_flag)
-    end
-  end        
-
-
-  # finish action method
-  def finish
-    begin
-      @step = :finish
-      @wizard = wizard_config
-      @title = 'Finish'
-      @description = ''
-      h = (self.wizard_form_data||{}).merge(params[:user] || {}) 
-      @user = build_wizard_model(h)
-      if request.post? && callback_performs_action?(:on_post_finish_form)
-        raise CallbackError, "render or redirect not allowed in :on_post_finish_form callback", caller
-      end
-      button_id = check_action_for_button
-      return if performed?
-      if request.get?
-        return if callback_performs_action?(:on_get_finish_form)
-        render_wizard_form
-        return
-      end
-
-      # @user.enable_validation_group :finish
-      unless @user.valid?(:finish)
-        return if callback_performs_action?(:on_invalid_finish_form)
-        render_wizard_form
-        return
-      end
-
-      callback_performs_action?(:on_finish_form_finish)
-      _on_wizard_finish
-      redirect_to '/main/finished' unless self.performed?
     ensure
       self.wizard_form_data = h.merge(@user.attributes) if (@user && !@wizard_completed_flag)
     end
@@ -139,7 +136,7 @@ class GeneratedController < ApplicationController
     _wizard_final_redirect_to(:completed)
   end
   def _on_wizard_skip
-    session[:progression] = (session[:progression]||[]) - [@step]
+    self.progression = self.progression - [@step]
     redirect_to(:action=>wizard_config.next_page(@step)) unless self.performed?
   end
   def _on_wizard_back 
@@ -148,12 +145,12 @@ class GeneratedController < ApplicationController
   def _on_wizard_cancel
     _wizard_final_redirect_to(:canceled)
   end
-  def _wizard_final_redirect_to(type) 
-    initial_referer = (type == :canceled && wizard_config.form_data_keep_in_session?) ?
-      session[:initial_referer] :
+  def _wizard_final_redirect_to(type)
+    init = (type == :canceled && wizard_config.form_data_keep_in_session?) ?
+      self.initial_referer :
       reset_wizard_session_vars
     unless self.performed?
-      redir = (type == :canceled ? wizard_config.canceled_redirect : wizard_config.completed_redirect) || initial_referer
+      redir = (type == :canceled ? wizard_config.canceled_redirect : wizard_config.completed_redirect) || init
       return redirect_to(redir) if redir
       raise Wizardly::RedirectNotDefinedError, "No redirect was defined for completion or canceling the wizard.  Use :completed and :canceled options to define redirects.", caller
     end
@@ -163,35 +160,35 @@ class GeneratedController < ApplicationController
 
     protected
   def previous_in_progression_from(step)
-    po = wizard_config.page_order
-    p = session[:progression]||[]
+    po = [:init, :second, :finish]
+    p = self.progression
     p -= po[po.index(step)..-1]
-    session[:progression] = p
+    self.progression = p
     p.last
   end
   def check_progression
-    p = session[:progression]||[]
+    p = self.progression
     a = params[:action].to_sym
     return if p.last == a
-    po = wizard_config.page_order
+    po = [:init, :second, :finish]
     return unless (ai = po.index(a))
     p -= po[ai..-1]
     p << a
-    session[:progression] = p
+    self.progression = p
   end        
   # for :form_data=>:session
   def guard_entry 
     if (r = request.env['HTTP_REFERER'])
       h = ::ActionController::Routing::Routes.recognize_path(URI.parse(r).path)
       return check_progression if (h[:controller]||'') == 'generated'
-      session[:initial_referer] ||= h
+      self.initial_referer = h unless self.initial_referer
     end
     # coming from outside the controller
     
     if (params[:action] == 'init' || params[:action] == 'index')
       return check_progression
     elsif self.wizard_form_data
-      p = session[:progression]||[]
+      p = self.progression
       return check_progression if p.include?(params[:action].to_sym)
       return redirect_to(:action=>(p.last||:init))
     end
@@ -199,40 +196,53 @@ class GeneratedController < ApplicationController
   end
   hide_action :guard_entry
 
-  def save_wizard_model!
-    @user.save_without_validation!
-    if wizard_config.form_data_keep_in_session?
-      h = self.wizard_form_data
-      h['id'] = @user.id
-      self.wizard_form_data= h
-    end
+  def complete_wizard(redirect = nil)
+    redirect_to redirect if redirect
+    _on_wizard_finish
+    redirect_to '/main/finished' unless self.performed?
   end
   def build_wizard_model(params)
     if (wizard_config.persist_model_per_page? && (model_id = params['id']))
-      _model = User.find(model_id)
-      _model.attributes = params
-      _model
-    else
-      User.new(params)
+       begin
+        _model = User.find(model_id) 
+        _model.attributes = params
+        return _model
+      rescue
+      end
     end
+    User.new(params)
   end
   hide_action :build_wizard_model, :save_wizard_model!
 
+  def initial_referer
+    session[:generated_irk]
+  end
+  def initial_referer=(val)
+    session[:generated_irk] = val
+  end
+  def progression=(array)
+    session[:generated_prg] = array
+  end
+  def progression
+    session[:generated_prg]||[]
+  end
+  hide_action :progression, :progression=
+
   def wizard_form_data=(hash)
     if wizard_config.form_data_keep_in_session?
-      session[:wizardly_generated_user] = hash
+      session[:generated_dat] = hash
     else
       if hash
-        flash[:wizardly_generated_user] = hash
+        flash[:generated_dat] = hash
       else
-        flash.discard(:wizardly_generated_user)
+        flash.discard(:generated_dat)
       end
     end
   end
 
   def reset_wizard_form_data; self.wizard_form_data = nil; end
   def wizard_form_data
-    wizard_config.form_data_keep_in_session? ? session[:wizardly_generated_user] : flash[:wizardly_generated_user]
+    wizard_config.form_data_keep_in_session? ? session[:generated_dat] : flash[:generated_dat]
   end
   hide_action :wizard_form_data, :wizard_form_data=, :reset_wizard_form_data
 
@@ -249,9 +259,9 @@ class GeneratedController < ApplicationController
   hide_action :underscore_button_name
 
   def reset_wizard_session_vars
-    session[:progression] = nil
-    init = session[:initial_referer]
-    session[:initial_referer] = nil
+    self.progression = nil
+    init = self.initial_referer
+    self.initial_referer = nil
     init
   end
   hide_action :reset_wizard_session_vars
@@ -277,9 +287,19 @@ class GeneratedController < ApplicationController
   end
   hide_action :check_action_for_button
 
-  def callback_performs_action?(methId, arg=nil)
-    return false unless self.methods.include?(methId.to_s)
-    #self.__send__(methId)
+  @wizard_callbacks ||= {}
+  def self.wizard_callbacks; @wizard_callbacks; end
+
+  def callback_performs_action?(methId)
+    cache = self.class.wizard_callbacks
+    return false if ((m = cache[methId]) == :none)
+    unless m == :found
+      unless self.methods.include?(methId.to_s)
+        cache[methId] = :none
+        return false
+      end
+      cache[methId] = :found
+    end
     self.method(methId).call
     self.performed?
   end
@@ -338,7 +358,7 @@ class GeneratedController < ApplicationController
       self.send(:define_method, sprintf("on_invalid_%s_form", form.to_s), &block )
     end
   end
-  def self.on_back(*args, &block)
+  def self.on_finish(*args, &block)
     return if args.empty?
     all_forms = [:init, :second, :finish]
     if args.include?(:all)
@@ -346,47 +366,13 @@ class GeneratedController < ApplicationController
     else
       forms = args.map do |fa|
         unless all_forms.include?(fa)
-          raise(ArgumentError, ":"+fa.to_s+" in callback on_back is not a form defined for the wizard", caller)
+          raise(ArgumentError, ":"+fa.to_s+" in callback on_finish is not a form defined for the wizard", caller)
         end
         fa
       end
     end
     forms.each do |form|
-      self.send(:define_method, sprintf("on_%s_form_back", form.to_s), &block )
-    end
-  end
-  def self.on_skip(*args, &block)
-    return if args.empty?
-    all_forms = [:init, :second, :finish]
-    if args.include?(:all)
-      forms = all_forms
-    else
-      forms = args.map do |fa|
-        unless all_forms.include?(fa)
-          raise(ArgumentError, ":"+fa.to_s+" in callback on_skip is not a form defined for the wizard", caller)
-        end
-        fa
-      end
-    end
-    forms.each do |form|
-      self.send(:define_method, sprintf("on_%s_form_skip", form.to_s), &block )
-    end
-  end
-  def self.on_next(*args, &block)
-    return if args.empty?
-    all_forms = [:init, :second, :finish]
-    if args.include?(:all)
-      forms = all_forms
-    else
-      forms = args.map do |fa|
-        unless all_forms.include?(fa)
-          raise(ArgumentError, ":"+fa.to_s+" in callback on_next is not a form defined for the wizard", caller)
-        end
-        fa
-      end
-    end
-    forms.each do |form|
-      self.send(:define_method, sprintf("on_%s_form_next", form.to_s), &block )
+      self.send(:define_method, sprintf("on_%s_form_finish", form.to_s), &block )
     end
   end
   def self.on_cancel(*args, &block)
@@ -406,7 +392,7 @@ class GeneratedController < ApplicationController
       self.send(:define_method, sprintf("on_%s_form_cancel", form.to_s), &block )
     end
   end
-  def self.on_finish(*args, &block)
+  def self.on_skip(*args, &block)
     return if args.empty?
     all_forms = [:init, :second, :finish]
     if args.include?(:all)
@@ -414,13 +400,47 @@ class GeneratedController < ApplicationController
     else
       forms = args.map do |fa|
         unless all_forms.include?(fa)
-          raise(ArgumentError, ":"+fa.to_s+" in callback on_finish is not a form defined for the wizard", caller)
+          raise(ArgumentError, ":"+fa.to_s+" in callback on_skip is not a form defined for the wizard", caller)
         end
         fa
       end
     end
     forms.each do |form|
-      self.send(:define_method, sprintf("on_%s_form_finish", form.to_s), &block )
+      self.send(:define_method, sprintf("on_%s_form_skip", form.to_s), &block )
+    end
+  end
+  def self.on_back(*args, &block)
+    return if args.empty?
+    all_forms = [:init, :second, :finish]
+    if args.include?(:all)
+      forms = all_forms
+    else
+      forms = args.map do |fa|
+        unless all_forms.include?(fa)
+          raise(ArgumentError, ":"+fa.to_s+" in callback on_back is not a form defined for the wizard", caller)
+        end
+        fa
+      end
+    end
+    forms.each do |form|
+      self.send(:define_method, sprintf("on_%s_form_back", form.to_s), &block )
+    end
+  end
+  def self.on_next(*args, &block)
+    return if args.empty?
+    all_forms = [:init, :second, :finish]
+    if args.include?(:all)
+      forms = all_forms
+    else
+      forms = args.map do |fa|
+        unless all_forms.include?(fa)
+          raise(ArgumentError, ":"+fa.to_s+" in callback on_next is not a form defined for the wizard", caller)
+        end
+        fa
+      end
+    end
+    forms.each do |form|
+      self.send(:define_method, sprintf("on_%s_form_next", form.to_s), &block )
     end
   end
 
