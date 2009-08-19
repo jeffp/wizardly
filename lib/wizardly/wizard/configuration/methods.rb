@@ -31,7 +31,19 @@ module Wizardly
       self.send(:define_method, sprintf("#{macro.last}", form.to_s), &block )
     end
   end
+
 MACRO
+        end
+        
+        global_macros = [
+          %w(on_completed after_wizard_save)
+        ]
+        global_macros.each do |macro|
+          mb << <<-GLOBAL
+  def self.#{macro.first}(&block)
+    self.send(:define_method, :#{macro.last}, &block )
+  end
+GLOBAL
         end
         mb.string
       end
@@ -97,28 +109,29 @@ MACRO
         return
       end
 
+      @do_not_complete = false
         ONE
         if self.last_page?(id)
           mb << <<-TWO
       callback_performs_action?(:on_#{id}_form_#{finish_button})
-      complete_wizard
+      complete_wizard unless @do_not_complete
         TWO
         elsif self.first_page?(id)
           mb << <<-THREE
       if button_id == :#{finish_button}
         callback_performs_action?(:on_#{id}_form_#{finish_button})
-        complete_wizard
+        complete_wizard unless @do_not_complete
         return
       end
       #{model_persist_line}
       return if callback_performs_action?(:on_#{id}_form_#{next_button})
       redirect_to :action=>:#{self.next_page(id)}
         THREE
-        else
+        else 
           mb << <<-FOUR
       if button_id == :#{finish_button}
         callback_performs_action?(:on_#{id}_form_#{finish_button})
-        complete_wizard
+        complete_wizard unless @do_not_complete
         return
       end
       #{model_persist_line}
@@ -144,7 +157,7 @@ ENSURE
       <<-CALLBACKS 
   protected
   def _on_wizard_#{finish}
-    @#{self.model}.save_without_validation!
+    @#{self.model}.save_without_validation! if @#{self.model}.changed?
     @wizard_completed_flag = true
     reset_wizard_form_data
     _wizard_final_redirect_to(:completed)
@@ -182,6 +195,7 @@ ENSURE
         mb = StringIO.new
         mb << <<-PROGRESSION
   protected
+  def do_not_complete; @do_not_complete = true; end
   def previous_in_progression_from(step)
     po = #{self.page_order.inspect}
     p = self.progression
@@ -246,7 +260,9 @@ SANDBOX
         end
         mb << <<-HELPERS
   def complete_wizard(redirect = nil)
-    redirect_to redirect if redirect
+    @#{self.model}.save_without_validation!
+    callback_performs_action?(:after_wizard_save)
+    redirect_to redirect if (redirect && !self.performed?)
     _on_wizard_#{finish_button}
     redirect_to #{Utils.formatted_redirect(self.completed_redirect)} unless self.performed?
   end

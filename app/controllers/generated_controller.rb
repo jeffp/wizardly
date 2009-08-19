@@ -33,8 +33,9 @@ class GeneratedController < ApplicationController
         return
       end
 
+      @do_not_complete = false
       callback_performs_action?(:on_finish_form_finish)
-      complete_wizard
+      complete_wizard unless @do_not_complete
     ensure
       self.wizard_form_data = h.merge(@user.attributes) if (@user && !@wizard_completed_flag)
     end
@@ -68,9 +69,10 @@ class GeneratedController < ApplicationController
         return
       end
 
+      @do_not_complete = false
       if button_id == :finish
         callback_performs_action?(:on_second_form_finish)
-        complete_wizard
+        complete_wizard unless @do_not_complete
         return
       end
       
@@ -109,9 +111,10 @@ class GeneratedController < ApplicationController
         return
       end
 
+      @do_not_complete = false
       if button_id == :finish
         callback_performs_action?(:on_init_form_finish)
-        complete_wizard
+        complete_wizard unless @do_not_complete
         return
       end
       
@@ -130,7 +133,7 @@ class GeneratedController < ApplicationController
 
     protected
   def _on_wizard_finish
-    @user.save_without_validation!
+    @user.save_without_validation! if @user.changed?
     @wizard_completed_flag = true
     reset_wizard_form_data
     _wizard_final_redirect_to(:completed)
@@ -159,6 +162,7 @@ class GeneratedController < ApplicationController
 
 
     protected
+  def do_not_complete; @do_not_complete = true; end
   def previous_in_progression_from(step)
     po = [:init, :second, :finish]
     p = self.progression
@@ -197,7 +201,9 @@ class GeneratedController < ApplicationController
   hide_action :guard_entry
 
   def complete_wizard(redirect = nil)
-    redirect_to redirect if redirect
+    @user.save_without_validation!
+    callback_performs_action?(:after_wizard_save)
+    redirect_to redirect if (redirect && !self.performed?)
     _on_wizard_finish
     redirect_to '/main/finished' unless self.performed?
   end
@@ -324,6 +330,7 @@ class GeneratedController < ApplicationController
       self.send(:define_method, sprintf("on_post_%s_form", form.to_s), &block )
     end
   end
+
   def self.on_get(*args, &block)
     return if args.empty?
     all_forms = [:init, :second, :finish]
@@ -341,6 +348,7 @@ class GeneratedController < ApplicationController
       self.send(:define_method, sprintf("on_get_%s_form", form.to_s), &block )
     end
   end
+
   def self.on_errors(*args, &block)
     return if args.empty?
     all_forms = [:init, :second, :finish]
@@ -358,6 +366,7 @@ class GeneratedController < ApplicationController
       self.send(:define_method, sprintf("on_invalid_%s_form", form.to_s), &block )
     end
   end
+
   def self.on_finish(*args, &block)
     return if args.empty?
     all_forms = [:init, :second, :finish]
@@ -375,6 +384,7 @@ class GeneratedController < ApplicationController
       self.send(:define_method, sprintf("on_%s_form_finish", form.to_s), &block )
     end
   end
+
   def self.on_cancel(*args, &block)
     return if args.empty?
     all_forms = [:init, :second, :finish]
@@ -392,6 +402,7 @@ class GeneratedController < ApplicationController
       self.send(:define_method, sprintf("on_%s_form_cancel", form.to_s), &block )
     end
   end
+
   def self.on_skip(*args, &block)
     return if args.empty?
     all_forms = [:init, :second, :finish]
@@ -409,6 +420,7 @@ class GeneratedController < ApplicationController
       self.send(:define_method, sprintf("on_%s_form_skip", form.to_s), &block )
     end
   end
+
   def self.on_back(*args, &block)
     return if args.empty?
     all_forms = [:init, :second, :finish]
@@ -426,6 +438,7 @@ class GeneratedController < ApplicationController
       self.send(:define_method, sprintf("on_%s_form_back", form.to_s), &block )
     end
   end
+
   def self.on_next(*args, &block)
     return if args.empty?
     all_forms = [:init, :second, :finish]
@@ -442,6 +455,10 @@ class GeneratedController < ApplicationController
     forms.each do |form|
       self.send(:define_method, sprintf("on_%s_form_next", form.to_s), &block )
     end
+  end
+
+  def self.on_completed(&block)
+    self.send(:define_method, :after_wizard_save, &block )
   end
 
 
