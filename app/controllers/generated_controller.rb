@@ -133,6 +133,7 @@ class GeneratedController < ApplicationController
 
     protected
   def _on_wizard_finish
+    return if @wizard_completed_flag
     @user.save_without_validation! if @user.changed?
     @wizard_completed_flag = true
     reset_wizard_form_data
@@ -201,9 +202,12 @@ class GeneratedController < ApplicationController
   hide_action :guard_entry
 
   def complete_wizard(redirect = nil)
-    @user.save_without_validation!
-    callback_performs_action?(:after_wizard_save)
+    unless @wizard_completed_flag
+      @user.save_without_validation!
+      callback_performs_action?(:after_wizard_save)
+    end
     redirect_to redirect if (redirect && !self.performed?)
+    return if @wizard_completed_flag
     _on_wizard_finish
     redirect_to '/main/finished' unless self.performed?
   end

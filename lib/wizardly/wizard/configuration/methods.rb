@@ -157,6 +157,7 @@ ENSURE
       <<-CALLBACKS 
   protected
   def _on_wizard_#{finish}
+    return if @wizard_completed_flag
     @#{self.model}.save_without_validation! if @#{self.model}.changed?
     @wizard_completed_flag = true
     reset_wizard_form_data
@@ -260,9 +261,12 @@ SANDBOX
         end
         mb << <<-HELPERS
   def complete_wizard(redirect = nil)
-    @#{self.model}.save_without_validation!
-    callback_performs_action?(:after_wizard_save)
+    unless @wizard_completed_flag
+      @#{self.model}.save_without_validation!
+      callback_performs_action?(:after_wizard_save)
+    end
     redirect_to redirect if (redirect && !self.performed?)
+    return if @wizard_completed_flag
     _on_wizard_#{finish_button}
     redirect_to #{Utils.formatted_redirect(self.completed_redirect)} unless self.performed?
   end
