@@ -4,10 +4,6 @@
 
 == Resources
 
-Examples
-
-* http://github.com/jeffp/wizardly-examples
-
 Source
 
 * git://github.com/jeffp/wizardly.git
@@ -15,6 +11,10 @@ Source
 Install
 
 * sudo gem install jeffp-wizardly --source=http://http://gems.github.com
+
+Examples
+
+* http://github.com/jeffp/wizardly-examples
 	
 == Description
 
@@ -25,39 +25,12 @@ produces the scaffolding and controller of a multi-step wizard.
 Features include:
 * Model-based definition
 * Wizard controller macro
-* Wizard scaffolding generator
-* Default wizard buttons
-* Custom button creation
-* Page and button callbacks
-
-== Setup
-
-Put the following in your application's config block in config/environment.rb
-
-  config.gem 'jeffp-wizardly', :lib=>'wizardly'
-
-and run the install gems rake task on your application
-
-  rake gems:install
-
-For any rails app, run the following to install wizardly rake tasks (optional)
-
-  ./script/generate wizardly_app
-
-== Recommendations
-
-Wizardly uses sessions.  It is recommended you use a session store other than the  
-default cookies store to eliminate the 4KB size restriction.  To use the active 
-record store, add this line to your environment.rb
-
-  config.action_controller.session_store = :active_record_store
-
-And set up the sessions table in the database
-
-  rake db:sessions:create
-  rake db:migrate
-
-Use the MemCached session store for higher performance requirements.
+* Wizard scaffold generator
+* Simple wizard page helpers
+* Default and customizable wizard buttons
+* Page and wizard callbacks
+* High in Convention
+* Rich in Configuration
 
 == Example
 
@@ -81,57 +54,122 @@ Step 3: Generate a 'wizardly' scaffold for your controller.
 
   ./script/generate wizardly_scaffold signup
 
-You are ready to go.
+You are ready to go: start your servers.
 
 General usage and configuration of wizardly follows.  See the examples at
 
   http://github.com/jeffp/wizardly-examples
 
-== Usage
+== Setup
 
-=== Default Behavior and Scaffolding Configuration
+Put the following in your application's config block in config/environment.rb
 
-The wizardly_scaffold generator produces an html view for each validation_group
-declared in the model.  The wizard progresses to each page in the same order of 
-the validation_group(s) in the model.  Buttons for navigating
-the wizard are included on each page.
+  config.gem 'jeffp-wizardly'
 
-You can view a wizardly controller's configuration by using the wizardly:config
-rake task.  First you'll need to install it if you already have not
+and run the install gems rake task on your application
+
+  rake gems:install
+
+=== Setup Recommendations
+
+Wizardly uses sessions.  It is recommended you use a session store other than the  
+default cookies store to eliminate the 4KB size restriction.  To use the active 
+record store, add this line to your environment.rb
+
+  config.action_controller.session_store = :active_record_store
+
+And set up the sessions table in the database
+
+  rake db:sessions:create
+  rake db:migrate
+
+Use the MemCached session store for higher performance requirements.
+
+== Inspecting A Wizard Controller
+
+This is optional, but for any rails app, you can install wizardly rake tasks
+by running 
 
   ./script/generate wizardly_app
 
-Then you can call the rake task for any controller configured with the 
-'act_wizardly_for' macro
+Once installed, you can run the config rake task to inspect a wizardly controller
 
-  rake wizardly:config name=signup
+  rake wizardly:config name=controller_name
 
-Substitute the name of any wizardly controller for 'signup'.
+The controller_name you give it must have a +act_wizardly_for+ declaration for 
+an existing active record model and database table.  (Don't forget to migrate 
+your database)  The rake task will display the wizard's buttons, pages and fields
+along with other configuration information.
 
+== The Basic Wizard: Actions, Instance Variables, Flow, Progression and Guarding
+
+Wizardly creates a controller action for each validation group 
+in the model.  Likewise, the wizardly scaffold generates a view form for each 
+action.  
+
+The actions automatically instantiate a few instance variables: @step, @wizard,
+@title and @{model_name}.  @step contains the symbol corresponding to 
+the action name and is used in the wizard view helpers.  @wizard references
+the wizard configuration object and is primarily used by the view helpers.  
+@title contains the string name of the action by default and is used in the scaffolding.  Finally and
+most importantly of all, the action instantiates an instance of the model.  For
+instance, if the model is :account_user for AccountUser class, the action instantiates
+an @account_user instance.
+
+The page-to-page flow of the wizard is assumed to occur in the order that the
+validation groups were declared in the model.  A 'next' button progresses to the 
+next page in the order; a 'back' button progresses to the previous page in the order.
+The first page in the order will have no 'back' button.  The final page in the order
+will no 'next' button, but instead have a 'finish' button which completes the wizard
+by saving the model instance to the database.  Every page will have a 'cancel' button.
+
+The default progression is linear, progressing from one page to the next in the defined
+order.  In this case, the 'back' button simply jumps back to the previous page. 
+However, the developer can create more complex wizards altering the page flow 
+by jumping over and skipping pages.  Wizardly automatically tracks the forward progression
+through a wizard and manages the correct reverse flow for the 'back' button.  
+
+Since there is an assumed order for the wizard, entering the wizard at a later page
+makes no sense.  Wizardly, however, guards entry to the wizard.  If the user has 
+never entered the wizard, then entry is always redirected to the first page.  If the
+user has partially completed the wizard and is allowed to re-enter the wizard to
+complete it, wizardly only allows entry at or before the page previously completed.
+
+The guarding feature can be disabled for testing or other purposes.
+
+== Basic Usage
 
 === Completing and Canceling
 
 Once a user has entered a wizard, there are two ways they can leave, either by
-completing or canceling the wizard.
+completing or canceling the wizard.  The redirects for these two cases need to 
+be defined.  If neither are defined, then the HTTP_REFERER on first entry of the 
+wizard is used as the redirect for both cases. 
 
-The above example is pretty simple.  In fact, no redirects have been defined for
-completing or canceling the wizard in the above example so the wizardly controller
-uses the HTTP_REFERER for both cases.  What if there is no referer?  The controller
-raises a RedirectNotDefined error.  Let's remedy this problem with some options
-in the macro.
+The 3-step example given above is very simple.  In fact, no redirects have been defined for
+completing or canceling the wizard so the wizardly controller
+will use the HTTP_REFERER for both cases.  If there is no HTTP_REFERER, the controller
+raises a RedirectNotDefined error.  Let's remedy this problem by adding redirect options
+to the macro.
 
   class SignupController < ApplicationController
-    act_wizardly_for :user, :completed=>'/main/finished', 
+    act_wizardly_for :user, 
+      :completed=>'/main/finished', 
       :canceled=>{:controller=>:main, :action=>:canceled}
   end
 
 Now whether the user completes or cancels the wizard, the controller knows
-how to redirect.  Alternately, if you want to redirect to the same page 
-for both cases
+how to redirect.  If both canceling and completing the wizard redirect to the 
+same place, the following option takes care of both
 
   class SignupController < ApplicationController
     act_wizardly_for :user, :redirect=>'/main'
   end
+
+These redirects are static, and may not suffice for all cases.  In the event
+that the redirect needs to be determined at run-time, the developer can use a 
+number of page callback macros to intercede in the wizard logic and redirect 
+as needed on canceling or completion.  See Callbacks below.
 
 ==== Options For act_wizardly_for
 
@@ -210,11 +248,11 @@ See the Advanced Configuration section.
 
 === Callbacks
 
-The wizard macro 'act_wizardly_for' creates controller actions for each page.  
-The processing is standard for a wizard.  Hooks or callback macros are available
-for changing or interrupting the processing.  Here's an example.  Say our model
-declares a :step4 validation_group with :username, :password, and 
-:password_confirmation fields.  We'd like to handle this step specifically.
+Callback macros are available for interjecting code and control into the wizard 
+logic for each page.  For instance, say our model
+declares a :step4 validation group with fields :username, :password, and 
+:password_confirmation.  We'd like to clear the password fields before re-rendering 
+when one of the fields is invalid.  We can use the on_errors callback.
 
   class SignupController < ApplicationController
     act_wizardly_for :user, :redirect=>'/main'
@@ -226,41 +264,33 @@ declares a :step4 validation_group with :username, :password, and
     end
   end
 
-The above hook macro is only called if :step4 does not validate according to its
-validation_group.  
+The above callback macro is only called if :step4 does not validate.  
 
-Every page has a set of callback macros.  Here's the list.
+==== Action Callback Macros
+
+Each action has a set of callback macros.  Here's the list.
 
   on_get(:step)         # called just after creating model instance and before rendering a GET request
   on_post(:step)        # called just after creating the model instance for a POST request
   on_errors(:step)      # called after on_post callback if the form is invalid according to validation group
-  on_next(:step)        # called on a valid form when :next button is pressed
   on_back(:step)        # called when the :back button is pressed
-  on_cancel(:step)      # called when the :cancel button is pressed
-  on_finish(:step)      # called on a valid form when the :finish button is pressed
   on_skip(:step)        # called when the skip button is pressed
+  on_cancel(:step)      # called when the :cancel button is pressed
+  on_next(:step)        # called on a valid form when :next button is pressed
+  on_finish(:step)      # called on a valid form when the :finish button is pressed
 
-The block for each hook is called in the controller context, thus giving it access to all
-controller variables and methods just as any controller action method.  Each callback
-has access to the model through an instance variable using the model's name.  So
-for instance if our model is :user, the instance variable is '@user'.  Each 
-wizard page action also defines a @title, @description and @step instance variable.
-These are primarily used for scaffolding.  The @step holds the name of the current
-validation group, ie. :step1, step2, ... in our examples.
+The block in a callback is called in the controller context, thus giving it access to all
+controller variables and methods just as code in the controller action method.  Each callback
+has access to the model instance, controller methods like redirect_to, and controller variables like 
+params, request, response and session.  
 
 Notice the last five callbacks are related to the default wizard buttons.  Each
 callback gives the developer a chance to intervene before the impending render or 
 redirect caused by a button click in the view.  
 
-Important: Method names for button callbacks will change if you change the name
-of the button.  For general use, this is not an issue.  See the Advanced Configuration section.
-
 The order of callbacks for a GET request is as follows:
 
-  on_back
-  on_skip
-  on_cancel
-  ...on_'custom_button'...
+  on_back, on_skip, on_cancel
   on_get
   render_wizard_form
 
@@ -273,10 +303,7 @@ is an opportunity to modify or check the model fields before rendering.
 The order of callbacks for a POST request is as follows:
 
   on_post
-  on_back
-  on_skip
-  on_cancel
-  ...on_'custom_button'...
+  on_back, on_skip, on_cancel
   on_errors
     render_wizard_form  # only if errors
   on_next
