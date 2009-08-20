@@ -101,11 +101,13 @@ an existing active record model and database table.  (Don't forget to migrate
 your database)  The rake task will display the wizard's buttons, pages and fields
 along with other configuration information.
 
-== The Basic Wizard: Actions, Instance Variables, Flow, Progression and Guarding
+== The Basic Wizard
 
 Wizardly creates a controller action for each validation group 
-in the model.  Likewise, the wizardly scaffold generates a view form for each 
-action.  
+in the model.  Likewise, the wizardly scaffold generates a view named for each 
+corresponding action.  
+
+=== Action Instance Variables
 
 The actions automatically instantiate a few instance variables: @step, @wizard,
 @title and @{model_name}.  @step contains the symbol corresponding to 
@@ -116,6 +118,8 @@ most importantly of all, the action instantiates an instance of the model.  For
 instance, if the model is :account_user for AccountUser class, the action instantiates
 an @account_user instance.
 
+=== Flow
+
 The page-to-page flow of the wizard is assumed to occur in the order that the
 validation groups were declared in the model.  A 'next' button progresses to the 
 next page in the order; a 'back' button progresses to the previous page in the order.
@@ -123,11 +127,15 @@ The first page in the order will have no 'back' button.  The final page in the o
 will no 'next' button, but instead have a 'finish' button which completes the wizard
 by saving the model instance to the database.  Every page will have a 'cancel' button.
 
+=== Automatic Page Progression Tracking
+
 The default progression is linear, progressing from one page to the next in the defined
-order.  In this case, the 'back' button simply jumps back to the previous page. 
-However, the developer can create more complex wizards altering the page flow 
-by jumping over and skipping pages.  Wizardly automatically tracks the forward progression
-through a wizard and manages the correct reverse flow for the 'back' button.  
+order.  In the default case, the 'back' button simply jumps back to the previous page. 
+However, the developer can create more complex flows by jumping and skipping pages in 
+the action callback methods.  Wizardly tracks the forward progression
+through a wizard and back tracks accordingly for the 'back' button.  
+
+=== Wizard Entrance Guarding
 
 Since there is an assumed order for the wizard, entering the wizard at a later page
 makes no sense.  Wizardly, however, guards entry to the wizard.  If the user has 
@@ -171,9 +179,9 @@ that the redirect needs to be determined at run-time, the developer can use a
 number of page callback macros to intercede in the wizard logic and redirect 
 as needed on canceling or completion.  See Callbacks below.
 
-==== Options For act_wizardly_for
+==== Controller Options
 
-Here's a list of options you can use in the macro
+Here's a list of options for the +act_wizardly_for+ controller macro
 
   :completed => '/main/finished'
   :canceled => {:controller=>'main', :action=>'canceled'}
@@ -183,26 +191,26 @@ Here's a list of options you can use in the macro
   :persist_model => {:once|:per_page}
   :form_data => {:sandbox|:session}
 
-Setting the :skip option to +true+ tells the scaffold helpers to include or exclude a skip button on each page.  
+Setting the :skip option to +true+ tells the scaffold helpers to include a skip button on each page.  
 The :mask_fields options tells the scaffold generator which fields to generate as 'type=password' fields.
-:persist_model and :form_data are explained below. 
-
+Remaining options are explained below.
 
 ==== Preserving Form Field Data
 
-The :form_data option controls how the form data is preserved between 
-page requests that call outside the wizard controller.  The default option setting,
-:session, keeps the form data until the wizard is complete regardless of 
+The :form_data option controls how the form data is preserved when a user
+leaves or navigates to a page outside of the wizard before completing the wizard.  
+The default setting, :session, maintains the form data until the wizard is complete regardless of 
 whether the user leaves the wizard and returns later.  The form
 data is preserved for the life of the session or until the user completes the wizard.
 
-The other option setting, :sandbox, clears the form data whenever 
+The other setting, :sandbox, clears the form data whenever 
 the user leaves the wizard before the wizard is complete.  This includes pressing
 a :cancel button, a hyperlink or plainly navigating somewhere else. 
-Upon returning to the wizard, the form is reset and the user starts fresh.
+Upon returning to the wizard, the form is reset and the user starts fresh from the 
+first page.
 
 The form data is always cleared once the user has completed the wizard and the
-database record has been created.
+record has been committed.
 
 ==== Guarding Wizard Entry
 
@@ -220,7 +228,7 @@ contrary, if :form_data is set to :sandbox, entry is always guarded, and once th
 leaves the wizard, entry may only occur at the initial page (as the form data has
 been reset).
 
-==== Saving The Model
+==== Persisting The Model
 
 The :persist_model option controls how the model is saved, either :once or :per_page.
 The default option :once, only saves the model when the wizard is completed, by the 
@@ -248,79 +256,47 @@ See the Advanced Configuration section.
 
 === Callbacks
 
-Callback macros are available for interjecting code and control into the wizard 
+There are two kinds of callbacks -- general and action.  Action callbacks occur
+based on a controller action.  General callbacks occur based on a general wizard event.
+
+==== Action Callback Macros
+
+Action callback macros are available for injecting code and control into the wizard 
 logic for each page.  For instance, say our model
-declares a :step4 validation group with fields :username, :password, and 
-:password_confirmation.  We'd like to clear the password fields before re-rendering 
-when one of the fields is invalid.  We can use the on_errors callback.
+declares the following validation group
+
+  validation_group :step4, :fields=>[:username, :password, :password_confirmation]
+
+In the case that there's a validation error, we'd like to clear the password fields before re-rendering 
+when one of the fields is invalid.  For this purpose, we can use the on_errors action callback macro.
 
   class SignupController < ApplicationController
     act_wizardly_for :user, :redirect=>'/main'
 
     on_errors(:step4) do
-      #clear the password field if errors
       @user[:password] = ''
       @user[:password_confirmation] = ''
     end
   end
 
-The above callback macro is only called if :step4 does not validate.  
+Here's the list of action callbacks macros that the developer can use for any action
 
-==== Action Callback Macros
-
-Each action has a set of callback macros.  Here's the list.
-
-  on_get(:step)         # called just after creating model instance and before rendering a GET request
-  on_post(:step)        # called just after creating the model instance for a POST request
-  on_errors(:step)      # called after on_post callback if the form is invalid according to validation group
   on_back(:step)        # called when the :back button is pressed
   on_skip(:step)        # called when the skip button is pressed
   on_cancel(:step)      # called when the :cancel button is pressed
-  on_next(:step)        # called on a valid form when :next button is pressed
-  on_finish(:step)      # called on a valid form when the :finish button is pressed
+  on_next(:step)        # called when the :next button is pressed for a valid form (post only)
+  on_finish(:step)      # called when the :finish button is pressed for a valid form (post only)
 
-The block in a callback is called in the controller context, thus giving it access to all
-controller variables and methods just as code in the controller action method.  Each callback
-has access to the model instance, controller methods like redirect_to, and controller variables like 
-params, request, response and session.  
+  on_post(:step)        # called at the beginning of a POST request
+  on_get(:step)         # called before rendering a GET request
+  on_errors(:step)      # called before re-rendering the form after form invalidation (on a POST request)
 
-Notice the last five callbacks are related to the default wizard buttons.  Each
+The first five callbacks are related to the wizard buttons.  Each
 callback gives the developer a chance to intervene before the impending render or 
-redirect caused by a button click in the view.  
+redirect caused by a button click.
 
-The order of callbacks for a GET request is as follows:
-
-  on_back, on_skip, on_cancel
-  on_get
-  render_wizard_form
-
-Of course, only one of the button callbacks (back, skip or cancel) may occur for any single request, and 
-any one of them may keep the on_get from being called if they render or redirect. 
-:next and :finish button callbacks only occur for POST requests.  The on_get callback
-occurs just before rendering, and may itself render or redirect.  The on_get callback
-is an opportunity to modify or check the model fields before rendering.
-
-The order of callbacks for a POST request is as follows:
-
-  on_post
-  on_back, on_skip, on_cancel
-  on_errors
-    render_wizard_form  # only if errors
-  on_next
-  on_finish
-  
-In contrast to the on_get callback, the on_post callback occurs first.  It is an 
-opportunity to modify the model instance values (the model instance has already been 
-created from the post parameters).  The on_post method does not permit any rendering
-or redirecting since the back, skip and cancel buttons have not been evaluated and 
-may require precedence over flow control.  on_errors is called only for an invalid
-form and the render callback (see below) is called only if there are errors.  Either
-on_next or on_finish are called if the form is valid.  on_next is the default if a 
-'Finish' button is not pressed.  on_next by default moves to the next page, while
-on_finish saves the model and redirects to the :completed redirect.
-
-The argument of the callback macro indicates for which pages the block should be 
-called.  You can indicate as many pages or :all as shown.
+Each callback macro consists of a list of actions or the symbol :all as the argument 
+and a block defining the code.  For example
 
   on_post(:step1) do
     ...
@@ -332,10 +308,125 @@ called.  You can indicate as many pages or :all as shown.
     ...
   end
 
-Indicating a form that does not exist raises a CallbackError.
+Passing a non-existing action name raises a CallbackError.
 
+The block in a callback is called in the controller context, thus giving it access to all
+controller variables and methods including the model instance, controller methods 
+like +redirect_to+, and controller variables like params, request, response and session.  
+The model instance variable is available for all action callback macros.
 
-=== Rendering Callback
+==== The Wizard's Action Request Cycle
+
+The wizard page is first requested through a GET to an action.  In this GET request, 
+the wizard action creates the instance variables @step, @title and @wizard, and 
+builds the model instance variable @{model_name}.  Action callbacks may occur in the
+following order.
+
+  #GET request callback order
+
+  on_back, on_skip, on_cancel
+  on_get
+  render_wizard_form
+
+If the wizard detects that a back, skip or cancel button has been pressed, the 
+corresponding callback is called if implemented.  If the developer does nothing
+in the callbacks, default handlers will redirect accordingly and the on_get and 
+render_wizard_form callbacks will not be called (Note: render_wizard_form is a
+general callback and is included for completeness) Once rendered, the page is 
+presented to the user with a selection of fields and 
+wizard buttons for posting the form.  
+
+When the form data is returned by a POST request, the action creates the instance
+variables and builds the model instance using the form data.  The on_post callback
+is called at the beginning of the post, then the wizard checks for back, skip and 
+cancel buttons.  If neither of those buttons were pressed, it proceeds to validate
+the form, calling the on_errors callback if form validation fails, re-rendering and
+sending the page with errors.  If validation succeeds, the action determines whether
+the POST request signifies a 'next' or a 'finish' request and calls the corresponding
+callback if implemented.  The callback order for a POST request is as indicated below. 
+(The on_completed callback is a general callback called once the wizard is completed and 
+the model has been committed to the database)
+
+  #POST request callback order
+
+  on_post
+  on_back, on_skip, on_cancel
+  on_errors
+    render_wizard_form   # only if errors
+  on_next
+  on_finish
+    on_completed   # only if completed
+
+==== Rendering with on_get and on_errors
+
+The on_get and on_errors callbacks are called just before rendering the form.  These
+callbacks are a good place to declare extra variables needed to render the form.
+
+  on_get(:step2) do
+    setup_step2_form
+  end
+
+  on_errors(:step2) do
+    setup_step2_form
+  end
+ 
+  def setup_step2_form
+    @contact_options = [%w(phone 1), %w(email 2), %w(mail, 3)]
+  end
+
+If you have a variable that goes in every page, render_wizard_form is called
+for every page.
+
+==== Modifying form data with on_post
+
+The on_post callback is the first callback in the chain of a POST request and 
+is a good place to modify form input such as adding capitalization to a form.
+Modification should happen through the model instance variable and not the 
+controller's params variable.
+
+Redirecting and rendering are not allowed in the on_post callback.  Doing so will
+raise an error.
+
+==== Modifying Flow with on_next
+
+on_next is called when a form has posted validly and the wizard is ready to move 
+to the next page.  This is a good opportunity to modify form flow for more complex
+forms by redirecting and skipping pages.  See the STI Model example in 
+http://github.com/jeffp/wizardly-examples for an example of a wizard with two paths
+based on user input.
+
+  on_next(:step1) do
+    redirect_to(:action=>:step3) if @contributor.is_volunteer?
+  end
+  on_next(:step2) do
+    redirect_to(:action=>:step4)
+  end
+
+In the above example, :step 3 is a page for a volunteer, and :step2 is a page for
+a non-volunteer.
+
+==== Completing the wizard with on_next
+
+Sometimes you may want to complete the wizard based on user input rather than a
+'finish' button.  You can call the +complete_wizard+ method. See the completing
+wizard programmatically example below.
+
+==== Final modifications with on_finish
+
+on_finish callback is called when the user presses a 'finish' button and form
+validation is successful (for the validation_group).  on_finish is a good place
+to make any final modifications before the model instance is committed to the 
+database.
+
+Alternatively, if you want to stop the completion process, you can call the 
++do_not_complete+ method in the on_finish callback.  
+
+=== General Callback Macros
+
+There are two general callback macros: render_wizard_form and on_completed.  These
+are not tied to any action or set of actions.
+
+==== render_wizard_form
 
 For anyone needing to handle rendering in a special way, wizardly provides a render
 call back for this.
@@ -355,7 +446,18 @@ call back for this.
     end
   end
 
-=== Completing the Wizard Programmatically
+==== Dynamic redirecting with on_completed
+
+The on_completed callback is called once the model instance has been committed to 
+the database.  If you need any fields generated from committing the model, such 
+as an ID, to redirect on completion, the
+on_completed callback is the place to do this.
+
+  on_completed do
+    redirect_to post_path(@post)
+  end
+
+=== Helper methods: Completing the Wizard Programmatically
 
 Perhaps you want to complete a wizard based off of a test instead of a button
 click.  You can do this in your callbacks by calling the +complete_wizard+ method.
