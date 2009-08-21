@@ -8,19 +8,23 @@ module Wizardly
       attr_reader :id, :title, :description
       attr_accessor :buttons, :fields
 
-      def initialize(id, fields)
+      def initialize(config, id, fields)
         @buttons = []
-        @title = sym_to_string(id)
+        @title = symbol_to_button_name(id)
         @id = id
         @description = ''
         @fields = fields 
+        @config = config
       end
 
       def name; id.to_s; end
 
       def buttons_to(*args)
-        # #must analyze buttons
-        @buttons = args
+        buttons = @config.buttons
+        @buttons = args.map do |button_id|
+          raise(WizardConfigurationError, ":#{button_id} not defined as a button id in :button_to() call", caller) unless buttons.key?(button_id)
+          buttons[button_id]
+        end
       end
       def title_to(name)
         @title = name.strip.squeeze(' ')

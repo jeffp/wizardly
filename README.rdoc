@@ -251,7 +251,7 @@ can add :skip functionality to all pages by adding an option to the macro
   end
 
 You can create, customize and change buttons for any controller and any page. 
-See the Advanced Configuration section.
+See the Button Customization section.
 
 
 === Callbacks
@@ -457,7 +457,11 @@ on_completed callback is the place to do this.
     redirect_to post_path(@post)
   end
 
-=== Helper methods: Completing the Wizard Programmatically
+=== Helper methods
+
+Wizardly provides some helper methods which are useful in callbacks.
+
+==== Completing the Wizard Programmatically
 
 Perhaps you want to complete a wizard based off of a test instead of a button
 click.  You can do this in your callbacks by calling the +complete_wizard+ method.
@@ -473,6 +477,18 @@ You can change the redirect dynamically by passing it to the method.
 
   complete_wizard(some_model_path)
 
+==== Rerendering from a callback
+
+Sometimes it is useful to re-render the form and send the response to the user immediately.
+Wizardly provides a +render_and_return+ method for this purpose.  If a callback is
+triggered from a POST request, and the callback needs to re-render, this is the method.
+
+  on_back(:step2) do
+    if (something_mandatory_not_selected)
+      flash[:notice] = 'Please make a selection before going back'
+      render_and_return
+    end
+  end
 
 === Creating Scaffolds
 
@@ -497,9 +513,90 @@ You can create a scaffold using image_submit_tag by doing the following:
 
 Default button images are provided under the public/images/wizardly/ directory.
 
-== Advanced Configuration 
+== Button Customization 
 
-To be provided 
+The buttons used by the wizard and the view helpers can be customized as follows.    
+
+=== Changing Names of Default Wizard Buttons
+
+The wizard supports five default button actions-- :next, :back, :cancel, :skip and
+:finish.  The default names for the buttons are the corresponding capitalized
+string -- 'Next', 'Back', 'Cancel', 'Skip' and 'Finish'.
+
+The default button names can be customized in the +act_wizardly_for+ code block
+
+  class UserSignupController < ApplicationController
+    act_wizardly_for :user, :redirect=>'/main/index' do
+      change_button(:back).name_to('Previous Page')
+      change_button(:finish).name_to('Save and Return')
+    end
+  end
+
+With the above code, the 'Back' button will now be named 'Previous Page' and the 'Finish'
+button is renamed to the longer name 'Save and Return'.  Notice that symbols are used
+to determine the default button, but the customized name is passed.  A new symbol
+representing the change is created for each change, hence, for our buttons above :back
+is now referred to as :previous_page and :finish is now referred to as :save_and_return.
+
+=== Action Callbacks for Customized Buttons
+
+Changing the name of a default button also changes the name of its callback macro.  
+For instance, the on_back() and on_finish() callback macros are replaced by the following
+for the above example
+
+  on_previous_page(:step3) do
+    ...
+  end
+  on_save_and_return(:step3) do
+    ...
+  end
+
+=== Creating New Buttons
+
+Completely new buttons can be added to the wizard by passing a button name to the +create_button+ method 
+in the +act_wizardly_for+ code block
+
+  act_wizardly_for :user, :redirect=>'/main/index' do
+    change_button(:back).name_to('Previous Page')
+    change_button(:finish).name_to('Save and Return')
+    ...
+    create_button('Help')
+  end
+
+This creates a new button names 'Help' represented by the :help symbol.  Actions for this
+button must be defined by the on_help() callback macros for each and every page.
+
+  on_help(:all) do
+    case @step
+    when :step1 then ...
+    when :step2 then ...
+    end
+  end
+
+=== Setting Buttons for a Wizard Page
+
+Any new button needs to be explicitly added to every page it will show up on.  Each
+pages button set can be set in the +act_wizardly_for+ code as follows
+
+  act_wizardly_for :user, :redirect=>'/main/index' do
+    change_button(:back).name_to('Previous Page')
+    change_button(:finish).name_to('Save and Return')
+    ...
+    create_button('Help')
+    ...
+    set_page(:step1).buttons_to :next, :cancel, :help
+    set_page(:step2).buttons_to :next, :previous_page, :cancel, :help
+    set_page(:step3).buttons_to :save_and_return, :previous_page, :cancel, :help
+  end
+  
+=== Viewing the Configuration
+
+Use the wizardly rake tools to view the configuration of any wizard changes you make.
+
+  ./script/generate wizardly_app  # if not already called for the project
+  rake wizardly:config name=controller_name
+
+See the section 'Inspecting a Wizard Controller' above.
 
 == Testing
 

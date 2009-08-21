@@ -7,6 +7,7 @@ require 'wizardly/wizard/configuration/methods'
 module Wizardly
   module Wizard
     class Configuration
+      include TextHelpers
       attr_reader :pages, :completed_redirect, :canceled_redirect, :controller_path, :controller_class_name, :controller_name, :page_order
       
       #enum_attr :persistance, %w(sandbox session database)
@@ -28,10 +29,7 @@ module Wizardly
         @page_order = []
         @pages = {}
         @buttons = nil
-        @default_buttons = {}
-        [:next, :back, :skip, :cancel, :finish].each do |default|
-          @default_buttons[default] = Button.new(default)
-        end
+        @default_buttons = Hash[*[:next, :back, :cancel, :finish, :skip].collect {|default| [default, Button.new(default)] }.flatten]
       end
 
       def guard?; @guard_entry; end
@@ -105,7 +103,7 @@ module Wizardly
               end
               PageField.new(f, type)
             end
-            page = Page.new(p, fields)
+            page = Page.new(self, p, fields)
 
             # default button settings based on order, can be altered by
             # set_page(@id).buttons_to []
@@ -128,14 +126,15 @@ module Wizardly
       def _when_completed_redirect_to(redir); @completed_redirect = redir; end
       def _when_canceled_redirect_to(redir); @canceled_redirect = redir; end
       def _change_button(name)
-        @buttons = nil
+        raise(WizardConfigurationError, "Button :#{name} in _change_button() call does not exist", caller) unless @default_buttons.key?(name)
+        @buttons = nil 
         @default_buttons[name]
       end
       def _create_button(name)
-        id = string_to_sym(name)
-        raise(WizardlyConfigurationError, "Button '#{name}' cannot be created. It already exists.", caller) if @default_buttons.key?(id)
+        id = button_name_to_symbol(name)
+        raise(WizardConfigurationError, "Button '#{name}' with id :#{id} cannot be created. The ID already exists.", caller) if @default_buttons.key?(id)
         @buttons=nil
-        @default_buttons[id] = Button.new(id, name)
+        @default_buttons[id] = UserDefinedButton.new(id, name)
       end
       def _set_page(name); @pages[name]; end
       def _mask_passwords(passwords)
@@ -177,10 +176,11 @@ module Wizardly
         self.buttons.each do |k, b|
           bs = StringIO.new
           bs << "  #{b.name} (:#{b.id}) "
-          if (dk = @default_buttons.index(b))
-            bs << "-- used for internal <#{dk}> functionality"
+          if (b.user_defined?)
+            bs << "-- user defined button and function"
           else
-            bs << "-- custom defined button and function"
+            dk = @default_buttons.index(b)
+            bs << "-- used for internal <#{dk}> functionality"
           end
           io.puts bs.string
         end

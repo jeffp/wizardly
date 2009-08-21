@@ -7,29 +7,37 @@ class Callbacks2Controller < ApplicationController
 
   #NOTE: these only for testing - the preferred method of defining callbacks is
   # using the callback macros -- see Callbacks3Controller and the Readme.rdoc ;)
-  def on_post_second_form
+  def _on_post_second_form
     redirect_to '/main/index#on_post_second_form'
   end
-  def on_get_init_form
+  def _on_get_init_form
     redirect_to '/main/index#on_get_init_form'
   end
-  def on_invalid_init_form
+  def _on_invalid_init_form
     redirect_to '/main/index#on_invalid_init_form'
   end
-  def on_init_form_back
+  def _on_init_form_back
     redirect_to '/main/index#on_init_form_back'
   end
-  def on_init_form_cancel
+  def _on_init_form_cancel
     redirect_to '/main/index#on_init_form_cancel'
   end
-  def on_init_form_next
+  def _on_init_form_next
     redirect_to '/main/index#on_init_form_next'
   end
-  def on_init_form_skip
+  def _on_init_form_skip
     redirect_to '/main/index#on_init_form_skip'
   end
-  def on_finish_form_finish
+  def _on_finish_form_finish
     redirect_to '/main/index#on_finish_form_finish'
   end
-  
+  hide_action :_on_post_second_form
+  hide_action :_on_get_init_form
+  hide_action :_on_invalid_init_form
+  hide_action :_on_init_form_back
+  hide_action :_on_init_form_cancel
+  hide_action :_on_init_form_next
+  hide_action :_on_init_form_skip
+  hide_action :_on_finish_form_finish
+
 end

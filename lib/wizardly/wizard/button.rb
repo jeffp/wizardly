@@ -9,18 +9,29 @@ module Wizardly
 
       def initialize(id, name=nil)
         @id = id
-        @name = name || sym_to_string(id)
+        @name = name || symbol_to_button_name(id)
+        @user_defined = false
       end
+      
+      def user_defined?; @user_defined; end
 
-      def to(name)
+      #used in the dsl
+      def name_to(name)
         if name.is_a?(String)
           @name = name.strip.squeeze(' ')
-          @id = string_to_sym(name)
+          @id = button_name_to_symbol(name)
         elsif name.is_a?(Symbol)
           @id = name
-          @name = sym_to_string(name)
+          @name = symbol_to_button_name(name)
         end
       end
-    end  
+    end
+
+    class UserDefinedButton < Button
+      def initialize(id, name=nil)
+        super
+        @user_defined = true
+      end
+    end
   end
 end

@@ -4,17 +4,23 @@ module Wizardly
       
       def print_callback_macros
         macros = [ 
-          %w(on_post on_post_%s_form),
-          %w(on_get on_get_%s_form),
-          %w(on_errors on_invalid_%s_form)
+          %w(on_post _on_post_%s_form),
+          %w(on_get _on_get_%s_form),
+          %w(on_errors _on_invalid_%s_form)
         ]
         self.buttons.each do |id, button|
-          macros << ['on_'+ id.to_s, 'on_%s_form_'+ id.to_s ]
+          macros << ['on_'+ id.to_s, '_on_%s_form_'+ id.to_s ]
         end
         mb = StringIO.new
         macros.each do |macro|
           mb << <<-MACRO
   def self.#{macro.first}(*args, &block)
+    self._define_action_callback_macro('#{macro.first}', '#{macro.last}', *args, &block)
+  end
+MACRO
+        end
+        mb << <<-DEFMAC
+  def self._define_action_callback_macro(macro_first, macro_last, *args, &block)
     return if args.empty?
     all_forms = #{page_order.inspect}
     if args.include?(:all)
@@ -22,28 +28,27 @@ module Wizardly
     else
       forms = args.map do |fa|
         unless all_forms.include?(fa)
-          raise(ArgumentError, ":"+fa.to_s+" in callback #{macro.first} is not a form defined for the wizard", caller)
+          raise(ArgumentError, ":"+fa.to_s+" in callback '" + macro_first + "' is not a form defined for the wizard", caller)
         end
         fa
       end
     end
     forms.each do |form|
-      self.send(:define_method, sprintf("#{macro.last}", form.to_s), &block )
+      self.send(:define_method, sprintf(macro_last, form.to_s), &block )
+      hide_action macro_last.to_sym
     end
   end
 
-MACRO
-        end
+DEFMAC
         
-        global_macros = [
-          %w(on_completed after_wizard_save)
-        ]
-        global_macros.each do |macro|
-          mb << <<-GLOBAL
+        [
+          %w(on_completed _after_wizard_save)
+        ].each do |macro|
+          mb << <<-EVENTS
   def self.#{macro.first}(&block)
     self.send(:define_method, :#{macro.last}, &block )
   end
-GLOBAL
+EVENTS
         end
         mb.string
       end
@@ -91,20 +96,20 @@ GLOBAL
       @description = '#{page.description}'
       h = (self.wizard_form_data||{}).merge(params[:#{self.model}] || {}) 
       @#{self.model} = build_wizard_model(h)
-      if request.post? && callback_performs_action?(:on_post_#{id}_form)
-        raise CallbackError, "render or redirect not allowed in :on_post_#{id}_form callback", caller
+      if request.post? && callback_performs_action?(:_on_post_#{id}_form)
+        raise CallbackError, "render or redirect not allowed in :on_post(:#{id}) callback", caller
       end
       button_id = check_action_for_button
       return if performed?
       if request.get?
-        return if callback_performs_action?(:on_get_#{id}_form)
+        return if callback_performs_action?(:_on_get_#{id}_form)
         render_wizard_form
         return
       end
 
       # @#{self.model}.enable_validation_group :#{id}
       unless @#{self.model}.valid?(:#{id})
-        return if callback_performs_action?(:on_invalid_#{id}_form)
+        return if callback_performs_action?(:_on_invalid_#{id}_form)
         render_wizard_form
         return
       end
@@ -113,29 +118,29 @@ GLOBAL
         ONE
         if self.last_page?(id)
           mb << <<-TWO
-      callback_performs_action?(:on_#{id}_form_#{finish_button})
+      callback_performs_action?(:_on_#{id}_form_#{finish_button})
       complete_wizard unless @do_not_complete
         TWO
         elsif self.first_page?(id)
           mb << <<-THREE
       if button_id == :#{finish_button}
-        callback_performs_action?(:on_#{id}_form_#{finish_button})
+        callback_performs_action?(:_on_#{id}_form_#{finish_button})
         complete_wizard unless @do_not_complete
         return
       end
       #{model_persist_line}
-      return if callback_performs_action?(:on_#{id}_form_#{next_button})
+      return if callback_performs_action?(:_on_#{id}_form_#{next_button})
       redirect_to :action=>:#{self.next_page(id)}
         THREE
         else 
           mb << <<-FOUR
       if button_id == :#{finish_button}
-        callback_performs_action?(:on_#{id}_form_#{finish_button})
+        callback_performs_action?(:_on_#{id}_form_#{finish_button})
         complete_wizard unless @do_not_complete
         return
       end
       #{model_persist_line}
-      return if callback_performs_action?(:on_#{id}_form_#{next_button})
+      return if callback_performs_action?(:_on_#{id}_form_#{next_button})
       redirect_to :action=>:#{self.next_page(id)}
         FOUR
         end
@@ -260,10 +265,16 @@ SESSION
 SANDBOX
         end
         mb << <<-HELPERS
+  def render_and_return
+    return if callback_performs_action?('_on_get_'+@step.to_s+'_form')
+    render_wizard_form
+    render unless self.performed?
+  end
+
   def complete_wizard(redirect = nil)
     unless @wizard_completed_flag
       @#{self.model}.save_without_validation!
-      callback_performs_action?(:after_wizard_save)
+      callback_performs_action?(:_after_wizard_save)
     end
     redirect_to redirect if (redirect && !self.performed?)
     return if @wizard_completed_flag
@@ -295,7 +306,7 @@ SANDBOX
   def progression
     session[:#{self.progression_key}]||[]
   end
-  hide_action :progression, :progression=
+  hide_action :progression, :progression=, :initial_referer, :initial_referer=
 
   def wizard_form_data=(hash)
     if wizard_config.form_data_keep_in_session?
@@ -340,14 +351,16 @@ SANDBOX
     #check if params[:commit] has returned a button from submit_tag
     unless (params[:commit] == nil)
       button_name = underscore_button_name(params[:commit])
-      unless [:#{next_id}, :#{finish_id}].include?(button_id = button_name.to_sym)
-        action_method_name = "on_" + params[:action].to_s + "_form_" + button_name
+      unless [:#{next_id}, :#{finish_id}].include?(button_id = button_name.to_sym) 
+        action_method_name = "_on_" + params[:action].to_s + "_form_" + button_name
         callback_performs_action?(action_method_name)
-        method_name = "_on_wizard_" + button_name
-        if (self.method(method_name))
-          self.__send__(method_name)
-        else
-          raise MissingCallbackError, "Callback method either '" + action_method_name + "' or '" + method_name + "' not defined", caller
+        unless ((btn_obj = self.wizard_config.buttons[button_id]) == nil || btn_obj.user_defined?)
+          method_name = "_on_wizard_" + button_name
+          if (self.method(method_name))
+            self.__send__(method_name)
+          else
+            raise MissingCallbackError, "Callback method either '" + action_method_name + "' or '" + method_name + "' not defined", caller
+          end
         end
       end
     end

@@ -15,26 +15,26 @@ class GeneratedController < ApplicationController
       @description = ''
       h = (self.wizard_form_data||{}).merge(params[:user] || {}) 
       @user = build_wizard_model(h)
-      if request.post? && callback_performs_action?(:on_post_finish_form)
-        raise CallbackError, "render or redirect not allowed in :on_post_finish_form callback", caller
+      if request.post? && callback_performs_action?(:_on_post_finish_form)
+        raise CallbackError, "render or redirect not allowed in :on_post(:finish) callback", caller
       end
       button_id = check_action_for_button
       return if performed?
       if request.get?
-        return if callback_performs_action?(:on_get_finish_form)
+        return if callback_performs_action?(:_on_get_finish_form)
         render_wizard_form
         return
       end
 
       # @user.enable_validation_group :finish
       unless @user.valid?(:finish)
-        return if callback_performs_action?(:on_invalid_finish_form)
+        return if callback_performs_action?(:_on_invalid_finish_form)
         render_wizard_form
         return
       end
 
       @do_not_complete = false
-      callback_performs_action?(:on_finish_form_finish)
+      callback_performs_action?(:_on_finish_form_finish)
       complete_wizard unless @do_not_complete
     ensure
       self.wizard_form_data = h.merge(@user.attributes) if (@user && !@wizard_completed_flag)
@@ -51,32 +51,32 @@ class GeneratedController < ApplicationController
       @description = ''
       h = (self.wizard_form_data||{}).merge(params[:user] || {}) 
       @user = build_wizard_model(h)
-      if request.post? && callback_performs_action?(:on_post_second_form)
-        raise CallbackError, "render or redirect not allowed in :on_post_second_form callback", caller
+      if request.post? && callback_performs_action?(:_on_post_second_form)
+        raise CallbackError, "render or redirect not allowed in :on_post(:second) callback", caller
       end
       button_id = check_action_for_button
       return if performed?
       if request.get?
-        return if callback_performs_action?(:on_get_second_form)
+        return if callback_performs_action?(:_on_get_second_form)
         render_wizard_form
         return
       end
 
       # @user.enable_validation_group :second
       unless @user.valid?(:second)
-        return if callback_performs_action?(:on_invalid_second_form)
+        return if callback_performs_action?(:_on_invalid_second_form)
         render_wizard_form
         return
       end
 
       @do_not_complete = false
       if button_id == :finish
-        callback_performs_action?(:on_second_form_finish)
+        callback_performs_action?(:_on_second_form_finish)
         complete_wizard unless @do_not_complete
         return
       end
       
-      return if callback_performs_action?(:on_second_form_next)
+      return if callback_performs_action?(:_on_second_form_next)
       redirect_to :action=>:finish
     ensure
       self.wizard_form_data = h.merge(@user.attributes) if (@user && !@wizard_completed_flag)
@@ -93,32 +93,32 @@ class GeneratedController < ApplicationController
       @description = ''
       h = (self.wizard_form_data||{}).merge(params[:user] || {}) 
       @user = build_wizard_model(h)
-      if request.post? && callback_performs_action?(:on_post_init_form)
-        raise CallbackError, "render or redirect not allowed in :on_post_init_form callback", caller
+      if request.post? && callback_performs_action?(:_on_post_init_form)
+        raise CallbackError, "render or redirect not allowed in :on_post(:init) callback", caller
       end
       button_id = check_action_for_button
       return if performed?
       if request.get?
-        return if callback_performs_action?(:on_get_init_form)
+        return if callback_performs_action?(:_on_get_init_form)
         render_wizard_form
         return
       end
 
       # @user.enable_validation_group :init
       unless @user.valid?(:init)
-        return if callback_performs_action?(:on_invalid_init_form)
+        return if callback_performs_action?(:_on_invalid_init_form)
         render_wizard_form
         return
       end
 
       @do_not_complete = false
       if button_id == :finish
-        callback_performs_action?(:on_init_form_finish)
+        callback_performs_action?(:_on_init_form_finish)
         complete_wizard unless @do_not_complete
         return
       end
       
-      return if callback_performs_action?(:on_init_form_next)
+      return if callback_performs_action?(:_on_init_form_next)
       redirect_to :action=>:second
     ensure
       self.wizard_form_data = h.merge(@user.attributes) if (@user && !@wizard_completed_flag)
@@ -201,10 +201,16 @@ class GeneratedController < ApplicationController
   end
   hide_action :guard_entry
 
+  def render_and_return
+    return if callback_performs_action?('_on_get_'+@step.to_s+'_form')
+    render_wizard_form
+    render unless self.performed?
+  end
+
   def complete_wizard(redirect = nil)
     unless @wizard_completed_flag
       @user.save_without_validation!
-      callback_performs_action?(:after_wizard_save)
+      callback_performs_action?(:_after_wizard_save)
     end
     redirect_to redirect if (redirect && !self.performed?)
     return if @wizard_completed_flag
@@ -236,7 +242,7 @@ class GeneratedController < ApplicationController
   def progression
     session[:generated_prg]||[]
   end
-  hide_action :progression, :progression=
+  hide_action :progression, :progression=, :initial_referer, :initial_referer=
 
   def wizard_form_data=(hash)
     if wizard_config.form_data_keep_in_session?
@@ -281,14 +287,16 @@ class GeneratedController < ApplicationController
     #check if params[:commit] has returned a button from submit_tag
     unless (params[:commit] == nil)
       button_name = underscore_button_name(params[:commit])
-      unless [:next, :finish].include?(button_id = button_name.to_sym)
-        action_method_name = "on_" + params[:action].to_s + "_form_" + button_name
+      unless [:next, :finish].include?(button_id = button_name.to_sym) 
+        action_method_name = "_on_" + params[:action].to_s + "_form_" + button_name
         callback_performs_action?(action_method_name)
-        method_name = "_on_wizard_" + button_name
-        if (self.method(method_name))
-          self.__send__(method_name)
-        else
-          raise MissingCallbackError, "Callback method either '" + action_method_name + "' or '" + method_name + "' not defined", caller
+        unless ((btn_obj = self.wizard_config.buttons[button_id]) == nil || btn_obj.user_defined?)
+          method_name = "_on_wizard_" + button_name
+          if (self.method(method_name))
+            self.__send__(method_name)
+          else
+            raise MissingCallbackError, "Callback method either '" + action_method_name + "' or '" + method_name + "' not defined", caller
+          end
         end
       end
     end
@@ -318,132 +326,30 @@ class GeneratedController < ApplicationController
 
 
     def self.on_post(*args, &block)
-    return if args.empty?
-    all_forms = [:init, :second, :finish]
-    if args.include?(:all)
-      forms = all_forms
-    else
-      forms = args.map do |fa|
-        unless all_forms.include?(fa)
-          raise(ArgumentError, ":"+fa.to_s+" in callback on_post is not a form defined for the wizard", caller)
-        end
-        fa
-      end
-    end
-    forms.each do |form|
-      self.send(:define_method, sprintf("on_post_%s_form", form.to_s), &block )
-    end
+    self._define_action_callback_macro('on_post', '_on_post_%s_form', *args, &block)
   end
-
   def self.on_get(*args, &block)
-    return if args.empty?
-    all_forms = [:init, :second, :finish]
-    if args.include?(:all)
-      forms = all_forms
-    else
-      forms = args.map do |fa|
-        unless all_forms.include?(fa)
-          raise(ArgumentError, ":"+fa.to_s+" in callback on_get is not a form defined for the wizard", caller)
-        end
-        fa
-      end
-    end
-    forms.each do |form|
-      self.send(:define_method, sprintf("on_get_%s_form", form.to_s), &block )
-    end
+    self._define_action_callback_macro('on_get', '_on_get_%s_form', *args, &block)
   end
-
   def self.on_errors(*args, &block)
-    return if args.empty?
-    all_forms = [:init, :second, :finish]
-    if args.include?(:all)
-      forms = all_forms
-    else
-      forms = args.map do |fa|
-        unless all_forms.include?(fa)
-          raise(ArgumentError, ":"+fa.to_s+" in callback on_errors is not a form defined for the wizard", caller)
-        end
-        fa
-      end
-    end
-    forms.each do |form|
-      self.send(:define_method, sprintf("on_invalid_%s_form", form.to_s), &block )
-    end
+    self._define_action_callback_macro('on_errors', '_on_invalid_%s_form', *args, &block)
   end
-
   def self.on_finish(*args, &block)
-    return if args.empty?
-    all_forms = [:init, :second, :finish]
-    if args.include?(:all)
-      forms = all_forms
-    else
-      forms = args.map do |fa|
-        unless all_forms.include?(fa)
-          raise(ArgumentError, ":"+fa.to_s+" in callback on_finish is not a form defined for the wizard", caller)
-        end
-        fa
-      end
-    end
-    forms.each do |form|
-      self.send(:define_method, sprintf("on_%s_form_finish", form.to_s), &block )
-    end
+    self._define_action_callback_macro('on_finish', '_on_%s_form_finish', *args, &block)
   end
-
   def self.on_cancel(*args, &block)
-    return if args.empty?
-    all_forms = [:init, :second, :finish]
-    if args.include?(:all)
-      forms = all_forms
-    else
-      forms = args.map do |fa|
-        unless all_forms.include?(fa)
-          raise(ArgumentError, ":"+fa.to_s+" in callback on_cancel is not a form defined for the wizard", caller)
-        end
-        fa
-      end
-    end
-    forms.each do |form|
-      self.send(:define_method, sprintf("on_%s_form_cancel", form.to_s), &block )
-    end
+    self._define_action_callback_macro('on_cancel', '_on_%s_form_cancel', *args, &block)
   end
-
   def self.on_skip(*args, &block)
-    return if args.empty?
-    all_forms = [:init, :second, :finish]
-    if args.include?(:all)
-      forms = all_forms
-    else
-      forms = args.map do |fa|
-        unless all_forms.include?(fa)
-          raise(ArgumentError, ":"+fa.to_s+" in callback on_skip is not a form defined for the wizard", caller)
-        end
-        fa
-      end
-    end
-    forms.each do |form|
-      self.send(:define_method, sprintf("on_%s_form_skip", form.to_s), &block )
-    end
+    self._define_action_callback_macro('on_skip', '_on_%s_form_skip', *args, &block)
   end
-
   def self.on_back(*args, &block)
-    return if args.empty?
-    all_forms = [:init, :second, :finish]
-    if args.include?(:all)
-      forms = all_forms
-    else
-      forms = args.map do |fa|
-        unless all_forms.include?(fa)
-          raise(ArgumentError, ":"+fa.to_s+" in callback on_back is not a form defined for the wizard", caller)
-        end
-        fa
-      end
-    end
-    forms.each do |form|
-      self.send(:define_method, sprintf("on_%s_form_back", form.to_s), &block )
-    end
+    self._define_action_callback_macro('on_back', '_on_%s_form_back', *args, &block)
   end
-
   def self.on_next(*args, &block)
+    self._define_action_callback_macro('on_next', '_on_%s_form_next', *args, &block)
+  end
+  def self._define_action_callback_macro(macro_first, macro_last, *args, &block)
     return if args.empty?
     all_forms = [:init, :second, :finish]
     if args.include?(:all)
@@ -451,18 +357,19 @@ class GeneratedController < ApplicationController
     else
       forms = args.map do |fa|
         unless all_forms.include?(fa)
-          raise(ArgumentError, ":"+fa.to_s+" in callback on_next is not a form defined for the wizard", caller)
+          raise(ArgumentError, ":"+fa.to_s+" in callback '" + macro_first + "' is not a form defined for the wizard", caller)
         end
         fa
       end
     end
     forms.each do |form|
-      self.send(:define_method, sprintf("on_%s_form_next", form.to_s), &block )
+      self.send(:define_method, sprintf(macro_last, form.to_s), &block )
+      hide_action macro_last.to_sym
     end
   end
 
   def self.on_completed(&block)
-    self.send(:define_method, :after_wizard_save, &block )
+    self.send(:define_method, :_after_wizard_save, &block )
   end
 
 

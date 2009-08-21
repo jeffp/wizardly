@@ -2,10 +2,13 @@ module Wizardly
   module Wizard
     module TextHelpers
       private
-      def string_to_sym(str)
-        str.downcase.strip.squeeze(' ').gsub(/ /, '_').to_sym
+      def underscore_button_name(name)
+        name.to_s.strip.squeeze(' ').gsub(/ /, '_').downcase
       end
-      def sym_to_string(sym)
+      def button_name_to_symbol(str)
+        underscore_button_name(str).to_sym
+      end
+      def symbol_to_button_name(sym)
         sym.to_s.gsub(/_/, ' ').squeeze(' ').titleize
       end
     end
