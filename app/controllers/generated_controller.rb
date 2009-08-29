@@ -215,7 +215,7 @@ class GeneratedController < ApplicationController
     redirect_to redirect if (redirect && !self.performed?)
     return if @wizard_completed_flag
     _on_wizard_finish
-    redirect_to '/main/finished' unless self.performed?
+    redirect_to('/main/finished') unless self.performed?
   end
   def build_wizard_model(params)
     if (wizard_config.persist_model_per_page? && (model_id = params['id']))
@@ -284,14 +284,20 @@ class GeneratedController < ApplicationController
 
   def check_action_for_button
     button_id = nil
-    #check if params[:commit] has returned a button from submit_tag
-    unless (params[:commit] == nil)
-      button_name = underscore_button_name(params[:commit])
-      unless [:next, :finish].include?(button_id = button_name.to_sym) 
-        action_method_name = "_on_" + params[:action].to_s + "_form_" + button_name
+    case 
+    when params[:commit]
+      button_name = params[:commit]
+      button_id = underscore_button_name(button_name).to_sym
+    when ((button = self.wizard_config.buttons.find{|k,b| params[b.id]}) && params[button.id] == button.name)
+      button_name = button.name 
+      button_id = button.id
+    end
+    if button_id
+      unless [:next, :finish].include?(button_id) 
+        action_method_name = "_on_" + params[:action].to_s + "_form_" + button_id.to_s
         callback_performs_action?(action_method_name)
         unless ((btn_obj = self.wizard_config.buttons[button_id]) == nil || btn_obj.user_defined?)
-          method_name = "_on_wizard_" + button_name
+          method_name = "_on_wizard_" + button_id.to_s
           if (self.method(method_name))
             self.__send__(method_name)
           else
@@ -300,7 +306,6 @@ class GeneratedController < ApplicationController
         end
       end
     end
-    #add other checks here or above
     button_id
   end
   hide_action :check_action_for_button
@@ -334,6 +339,9 @@ class GeneratedController < ApplicationController
   def self.on_errors(*args, &block)
     self._define_action_callback_macro('on_errors', '_on_invalid_%s_form', *args, &block)
   end
+  def self.on_back(*args, &block)
+    self._define_action_callback_macro('on_back', '_on_%s_form_back', *args, &block)
+  end
   def self.on_finish(*args, &block)
     self._define_action_callback_macro('on_finish', '_on_%s_form_finish', *args, &block)
   end
@@ -342,9 +350,6 @@ class GeneratedController < ApplicationController
   end
   def self.on_skip(*args, &block)
     self._define_action_callback_macro('on_skip', '_on_%s_form_skip', *args, &block)
-  end
-  def self.on_back(*args, &block)
-    self._define_action_callback_macro('on_back', '_on_%s_form_back', *args, &block)
   end
   def self.on_next(*args, &block)
     self._define_action_callback_macro('on_next', '_on_%s_form_next', *args, &block)

@@ -279,7 +279,7 @@ SANDBOX
     redirect_to redirect if (redirect && !self.performed?)
     return if @wizard_completed_flag
     _on_wizard_#{finish_button}
-    redirect_to #{Utils.formatted_redirect(self.completed_redirect)} unless self.performed?
+    redirect_to(#{Utils.formatted_redirect(self.completed_redirect)}) unless self.performed?
   end
   def build_wizard_model(params)
     if (wizard_config.persist_model_per_page? && (model_id = params['id']))
@@ -348,14 +348,20 @@ SANDBOX
 
   def check_action_for_button
     button_id = nil
-    #check if params[:commit] has returned a button from submit_tag
-    unless (params[:commit] == nil)
-      button_name = underscore_button_name(params[:commit])
-      unless [:#{next_id}, :#{finish_id}].include?(button_id = button_name.to_sym) 
-        action_method_name = "_on_" + params[:action].to_s + "_form_" + button_name
+    case 
+    when params[:commit]
+      button_name = params[:commit]
+      button_id = underscore_button_name(button_name).to_sym
+    when ((button = self.wizard_config.buttons.find{|k,b| params[b.id]}) && params[button.id] == button.name)
+      button_name = button.name 
+      button_id = button.id
+    end
+    if button_id
+      unless [:#{next_id}, :#{finish_id}].include?(button_id) 
+        action_method_name = "_on_" + params[:action].to_s + "_form_" + button_id.to_s
         callback_performs_action?(action_method_name)
         unless ((btn_obj = self.wizard_config.buttons[button_id]) == nil || btn_obj.user_defined?)
-          method_name = "_on_wizard_" + button_name
+          method_name = "_on_wizard_" + button_id.to_s
           if (self.method(method_name))
             self.__send__(method_name)
           else
@@ -364,7 +370,6 @@ SANDBOX
         end
       end
     end
-    #add other checks here or above
     button_id
   end
   hide_action :check_action_for_button

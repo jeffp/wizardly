@@ -16,14 +16,12 @@ module Wizardly
       def user_defined?; @user_defined; end
 
       #used in the dsl
-      def name_to(name)
-        if name.is_a?(String)
-          @name = name.strip.squeeze(' ')
-          @id = button_name_to_symbol(name)
-        elsif name.is_a?(Symbol)
-          @id = name
-          @name = symbol_to_button_name(name)
+      def name_to(name, opts={})
+        case name
+        when String then @name = name.strip.squeeze(' ')
+        when Symbol then @name = symbol_to_button_name(name)
         end
+        @id = opts[:id] if (opts[:id] && opts[:id].is_a?(Symbol))
       end
     end
 
