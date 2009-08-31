@@ -13,7 +13,7 @@ describe Callbacks2Controller do
     lambda { post :second }.should raise_error(Wizardly::CallbackError)
   end
   it "should redirect when posting next to the init page with empty fields" do
-    post :init, {:commit=>'Next'}
+    post :init, {:next=>'Next'}
     response.should redirect_to('/main/index#on_invalid_init_form')
   end
   it "should redirect when posting next to the init page with valid fields" do

@@ -352,9 +352,9 @@ SANDBOX
     when params[:commit]
       button_name = params[:commit]
       button_id = underscore_button_name(button_name).to_sym
-    when ((button = self.wizard_config.buttons.find{|k,b| params[b.id]}) && params[button.id] == button.name)
-      button_name = button.name 
-      button_id = button.id
+    when ((b_ar = self.wizard_config.buttons.find{|k,b| params[k]}) && params[b_ar.first] == b_ar.last.name)
+      button_name = b_ar.last.name
+      button_id = b_ar.first
     end
     if button_id
       unless [:#{next_id}, :#{finish_id}].include?(button_id) 
@@ -374,20 +374,20 @@ SANDBOX
   end
   hide_action :check_action_for_button
 
-  @wizard_callbacks ||= {}
+  @wizard_callbacks ||= []
   def self.wizard_callbacks; @wizard_callbacks; end
 
   def callback_performs_action?(methId)
     cache = self.class.wizard_callbacks
-    return false if ((m = cache[methId]) == :none)
-    unless m == :found
-      unless self.methods.include?(methId.to_s)
-        cache[methId] = :none
-        return false
-      end
-      cache[methId] = :found
+    return false if cache.include?(methId)
+
+    begin
+      self.send(methId)
+    rescue NoMethodError
+      cache << methId
+      return false
     end
-    self.method(methId).call
+    
     self.performed?
   end
   hide_action :callback_performs_action?
