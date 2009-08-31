@@ -533,16 +533,32 @@ The default button names can be customized in the +act_wizardly_for+ code block
   end
 
 With the above code, the 'Back' button will now be named 'Previous Page' and the 'Finish'
-button is renamed to the longer name 'Save and Return'.  Notice that symbols are used
+button is renamed to the longer name 'Save and Return'.
+
+Notice that symbols are used
 to determine the default button, but the customized name is passed.  A new symbol
 representing the change is created for each change, hence, for our buttons above :back
 is now referred to as :previous_page and :finish is now referred to as :save_and_return.
 
 === Action Callbacks for Customized Buttons
 
-Changing the name of a default button also changes the name of its callback macro.  
-For instance, the on_back() and on_finish() callback macros are replaced by the following
-for the above example
+Changing the name of a default button does not change the name of its callback macro.
+For instance, the renamed :back and :finish buttons above (to 'Previous Page' and 'Save and Return', respectively)
+still use the on_back() and on_finish() callback macros despite the name change.
+
+Perhaps though you want to change the symbol used to represent the button for consistancy
+across your MVC.  You can use the :id option when renaming to do so.
+
+  class UserSignupController < ApplicationController
+    act_wizardly_for :user, :redirect=>'/main/index' do
+      change_button(:back).name_to('Previous Page', :id=>:previous_page)
+      change_button(:finish).name_to('Save and Return', :id=>save_and_return)
+    end
+  end
+
+Coding the above causes the :back button's ID to be replaced with :previous_page and so forth
+for the :finish button.  Thereafter, each button is referred to with the new ID.  For instance,
+the corresponding callback macros would be
 
   on_previous_page(:step3) do
     ...
@@ -572,6 +588,13 @@ button must be defined by the on_help() callback macros for each and every page.
     when :step2 then ...
     end
   end
+
+Sometimes you may want to use the default ID given to the button.  You can specify the ID
+with the :id option.  This is particularly useful for international languages.
+
+  create_button('Helfen', :id=>:help)
+
+Now the help button will be called 'Helfen' in German and will be represented by :help in the code.
 
 === Setting Buttons for a Wizard Page
 

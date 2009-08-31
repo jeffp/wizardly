@@ -126,13 +126,14 @@ module Wizardly
       def _when_completed_redirect_to(redir); @completed_redirect = redir; end
       def _when_canceled_redirect_to(redir); @canceled_redirect = redir; end
       def _change_button(name)
-        raise(WizardConfigurationError, "Button :#{name} in _change_button() call does not exist", caller) unless @default_buttons.key?(name)
-        @buttons = nil 
-        @default_buttons[name]
+        raise(WizardConfigurationError, "Button :#{name} in _change_button() call does not exist", caller) unless self.buttons.key?(name)
+        _buttons = self.buttons
+        @buttons = nil # clear the buttons for regeneration after change in next line
+        _buttons[name]
       end
-      def _create_button(name)
-        id = button_name_to_symbol(name)
-        raise(WizardConfigurationError, "Button '#{name}' with id :#{id} cannot be created. The ID already exists.", caller) if @default_buttons.key?(id)
+      def _create_button(name, opts)
+        id = opts[:id] || button_name_to_symbol(name)
+        raise(WizardConfigurationError, "Button '#{name}' with id :#{id} cannot be created. The ID already exists.", caller) if self.buttons.key?(id)
         @buttons=nil
         @default_buttons[id] = UserDefinedButton.new(id, name)
       end

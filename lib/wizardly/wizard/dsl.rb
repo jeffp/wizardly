@@ -12,8 +12,8 @@ module Wizardly
       def change_button(name)
         @config._change_button(name)
       end
-      def create_button(name)
-        @config._create_button(name)
+      def create_button(name, opts)
+        @config._create_button(name, opts)
       end
       def set_page(name); 
         @config._set_page(name)
