@@ -6,48 +6,6 @@ class GeneratedController < ApplicationController
   before_filter :guard_entry
 
   
-  # init action method
-  def init
-    begin
-      @step = :init
-      @wizard = wizard_config
-      @title = 'Init'
-      @description = ''
-      h = (self.wizard_form_data||{}).merge(params[:user] || {}) 
-      @user = build_wizard_model(h)
-      if request.post? && callback_performs_action?(:_on_post_init_form)
-        raise CallbackError, "render or redirect not allowed in :on_post(:init) callback", caller
-      end
-      button_id = check_action_for_button
-      return if performed?
-      if request.get?
-        return if callback_performs_action?(:_on_get_init_form)
-        render_wizard_form
-        return
-      end
-
-      # @user.enable_validation_group :init
-      unless @user.valid?(:init)
-        return if callback_performs_action?(:_on_invalid_init_form)
-        render_wizard_form
-        return
-      end
-
-      @do_not_complete = false
-      if button_id == :finish
-        callback_performs_action?(:_on_init_form_finish)
-        complete_wizard unless @do_not_complete
-        return
-      end
-      
-      return if callback_performs_action?(:_on_init_form_next)
-      redirect_to :action=>:second
-    ensure
-      self.wizard_form_data = h.merge(@user.attributes) if (@user && !@wizard_completed_flag)
-    end
-  end        
-
-
   # second action method
   def second
     begin
@@ -120,6 +78,48 @@ class GeneratedController < ApplicationController
       @do_not_complete = false
       callback_performs_action?(:_on_finish_form_finish)
       complete_wizard unless @do_not_complete
+    ensure
+      self.wizard_form_data = h.merge(@user.attributes) if (@user && !@wizard_completed_flag)
+    end
+  end        
+
+
+  # init action method
+  def init
+    begin
+      @step = :init
+      @wizard = wizard_config
+      @title = 'Init'
+      @description = ''
+      h = (self.wizard_form_data||{}).merge(params[:user] || {}) 
+      @user = build_wizard_model(h)
+      if request.post? && callback_performs_action?(:_on_post_init_form)
+        raise CallbackError, "render or redirect not allowed in :on_post(:init) callback", caller
+      end
+      button_id = check_action_for_button
+      return if performed?
+      if request.get?
+        return if callback_performs_action?(:_on_get_init_form)
+        render_wizard_form
+        return
+      end
+
+      # @user.enable_validation_group :init
+      unless @user.valid?(:init)
+        return if callback_performs_action?(:_on_invalid_init_form)
+        render_wizard_form
+        return
+      end
+
+      @do_not_complete = false
+      if button_id == :finish
+        callback_performs_action?(:_on_init_form_finish)
+        complete_wizard unless @do_not_complete
+        return
+      end
+      
+      return if callback_performs_action?(:_on_init_form_next)
+      redirect_to :action=>:second
     ensure
       self.wizard_form_data = h.merge(@user.attributes) if (@user && !@wizard_completed_flag)
     end
@@ -339,8 +339,11 @@ class GeneratedController < ApplicationController
   def self.on_errors(*args, &block)
     self._define_action_callback_macro('on_errors', '_on_invalid_%s_form', *args, &block)
   end
-  def self.on_next(*args, &block)
-    self._define_action_callback_macro('on_next', '_on_%s_form_next', *args, &block)
+  def self.on_finish(*args, &block)
+    self._define_action_callback_macro('on_finish', '_on_%s_form_finish', *args, &block)
+  end
+  def self.on_skip(*args, &block)
+    self._define_action_callback_macro('on_skip', '_on_%s_form_skip', *args, &block)
   end
   def self.on_back(*args, &block)
     self._define_action_callback_macro('on_back', '_on_%s_form_back', *args, &block)
@@ -348,11 +351,8 @@ class GeneratedController < ApplicationController
   def self.on_cancel(*args, &block)
     self._define_action_callback_macro('on_cancel', '_on_%s_form_cancel', *args, &block)
   end
-  def self.on_finish(*args, &block)
-    self._define_action_callback_macro('on_finish', '_on_%s_form_finish', *args, &block)
-  end
-  def self.on_skip(*args, &block)
-    self._define_action_callback_macro('on_skip', '_on_%s_form_skip', *args, &block)
+  def self.on_next(*args, &block)
+    self._define_action_callback_macro('on_next', '_on_%s_form_next', *args, &block)
   end
   def self._define_action_callback_macro(macro_first, macro_last, *args, &block)
     return if args.empty?

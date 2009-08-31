@@ -186,12 +186,14 @@ Here's a list of options for the +act_wizardly_for+ controller macro
   :completed => '/main/finished'
   :canceled => {:controller=>'main', :action=>'canceled'}
   :skip => true
+  :cancel => false
   :guard => false
   :mask_fields => [:password, :password_confirmation] (by default)
   :persist_model => {:once|:per_page}
   :form_data => {:sandbox|:session}
 
-Setting the :skip option to +true+ tells the scaffold helpers to include a skip button on each page.  
+Setting the :skip option to +true+ tells the scaffold helpers to include a skip button on each page.
+The :cancel option set to +false+ removes the 'cancel' button from the wizard views.
 The :mask_fields options tells the scaffold generator which fields to generate as 'type=password' fields.
 Remaining options are explained below.
 

@@ -17,9 +17,10 @@ module Wizardly
         @controller_class_name += 'Controller' unless @controller_class_name =~ /Controller$/
         @controller_path = @controller_class_name.sub(/Controller$/,'').underscore
         @controller_name = @controller_class_name.demodulize.sub(/Controller$/,'').underscore
-        @completed_redirect = opts[:redirect] || opts[:completed] || opts[:when_completed] #format_redirect(completed_redirect)
-        @canceled_redirect = opts[:redirect] || opts[:canceled] || opts[:when_canceled]
-        @allow_skipping = opts[:skip] || opts[:allow_skip] || opts[:allow_skipping] || false
+        @completed_redirect = opts[:completed] || opts[:when_completed] || opts[:redirect] #format_redirect(completed_redirect)
+        @canceled_redirect = opts[:canceled] || opts[:when_canceled] || opts[:redirect]
+        @include_skip_button = opts[:skip] || opts[:allow_skip] || opts[:allow_skipping] || false
+        @include_cancel_button = opts.key?(:cancel) ? opts[:cancel] : true
         @guard_entry = opts.key?(:guard) ? opts[:guard] : true
         @password_fields = opts[:mask_fields] || opts[:mask_passwords] || [:password, :password_confirmation]
         @persist_model = opts[:persist_model] || :once
@@ -111,8 +112,8 @@ module Wizardly
             buttons << @default_buttons[:next] unless index >= last_index
             buttons << @default_buttons[:finish] if index == last_index
             buttons << @default_buttons[:back] unless index == 0
-            buttons << @default_buttons[:skip] if (@allow_skipping && index != last_index)
-            buttons << @default_buttons[:cancel]
+            buttons << @default_buttons[:skip] if (@include_skip_button && index != last_index)
+            buttons << @default_buttons[:cancel] if (@include_cancel_button)
             page.buttons = buttons
             @pages[page.id] = page
           end
