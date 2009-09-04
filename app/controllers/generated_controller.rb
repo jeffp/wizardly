@@ -6,48 +6,6 @@ class GeneratedController < ApplicationController
   before_filter :guard_entry
 
   
-  # second action method
-  def second
-    begin
-      @step = :second
-      @wizard = wizard_config
-      @title = 'Second'
-      @description = ''
-      h = (self.wizard_form_data||{}).merge(params[:user] || {}) 
-      @user = build_wizard_model(h)
-      if request.post? && callback_performs_action?(:_on_post_second_form)
-        raise CallbackError, "render or redirect not allowed in :on_post(:second) callback", caller
-      end
-      button_id = check_action_for_button
-      return if performed?
-      if request.get?
-        return if callback_performs_action?(:_on_get_second_form)
-        render_wizard_form
-        return
-      end
-
-      # @user.enable_validation_group :second
-      unless @user.valid?(:second)
-        return if callback_performs_action?(:_on_invalid_second_form)
-        render_wizard_form
-        return
-      end
-
-      @do_not_complete = false
-      if button_id == :finish
-        callback_performs_action?(:_on_second_form_finish)
-        complete_wizard unless @do_not_complete
-        return
-      end
-      
-      return if callback_performs_action?(:_on_second_form_next)
-      redirect_to :action=>:finish
-    ensure
-      self.wizard_form_data = h.merge(@user.attributes) if (@user && !@wizard_completed_flag)
-    end
-  end        
-
-
   # finish action method
   def finish
     begin
@@ -120,6 +78,48 @@ class GeneratedController < ApplicationController
       
       return if callback_performs_action?(:_on_init_form_next)
       redirect_to :action=>:second
+    ensure
+      self.wizard_form_data = h.merge(@user.attributes) if (@user && !@wizard_completed_flag)
+    end
+  end        
+
+
+  # second action method
+  def second
+    begin
+      @step = :second
+      @wizard = wizard_config
+      @title = 'Second'
+      @description = ''
+      h = (self.wizard_form_data||{}).merge(params[:user] || {}) 
+      @user = build_wizard_model(h)
+      if request.post? && callback_performs_action?(:_on_post_second_form)
+        raise CallbackError, "render or redirect not allowed in :on_post(:second) callback", caller
+      end
+      button_id = check_action_for_button
+      return if performed?
+      if request.get?
+        return if callback_performs_action?(:_on_get_second_form)
+        render_wizard_form
+        return
+      end
+
+      # @user.enable_validation_group :second
+      unless @user.valid?(:second)
+        return if callback_performs_action?(:_on_invalid_second_form)
+        render_wizard_form
+        return
+      end
+
+      @do_not_complete = false
+      if button_id == :finish
+        callback_performs_action?(:_on_second_form_finish)
+        complete_wizard unless @do_not_complete
+        return
+      end
+      
+      return if callback_performs_action?(:_on_second_form_next)
+      redirect_to :action=>:finish
     ensure
       self.wizard_form_data = h.merge(@user.attributes) if (@user && !@wizard_completed_flag)
     end
@@ -339,9 +339,6 @@ class GeneratedController < ApplicationController
   def self.on_errors(*args, &block)
     self._define_action_callback_macro('on_errors', '_on_invalid_%s_form', *args, &block)
   end
-  def self.on_finish(*args, &block)
-    self._define_action_callback_macro('on_finish', '_on_%s_form_finish', *args, &block)
-  end
   def self.on_skip(*args, &block)
     self._define_action_callback_macro('on_skip', '_on_%s_form_skip', *args, &block)
   end
@@ -350,6 +347,9 @@ class GeneratedController < ApplicationController
   end
   def self.on_cancel(*args, &block)
     self._define_action_callback_macro('on_cancel', '_on_%s_form_cancel', *args, &block)
+  end
+  def self.on_finish(*args, &block)
+    self._define_action_callback_macro('on_finish', '_on_%s_form_finish', *args, &block)
   end
   def self.on_next(*args, &block)
     self._define_action_callback_macro('on_next', '_on_%s_form_next', *args, &block)
