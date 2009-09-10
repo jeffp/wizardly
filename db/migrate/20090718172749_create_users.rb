@@ -10,6 +10,10 @@ class CreateUsers < ActiveRecord::Migration
       t.boolean :programmer
       t.string :status
 
+      t.string :avatar_file_name
+      t.string :avatar_content_type
+      t.integer :avatar_file_size
+
       t.timestamps
     end
   end

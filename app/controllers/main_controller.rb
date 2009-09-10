@@ -2,6 +2,7 @@ class MainController < ApplicationController
   def index
     @links = {
       :macro=>'/macro',
+      :avatar_session=>'/avatar_session',
       :generated=>'/generated',
       :scaffold_test=>'/scaffold_test',
       :callbacks=>'/callbacks',

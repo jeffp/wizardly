@@ -13,8 +13,7 @@ class GeneratedController < ApplicationController
       @wizard = wizard_config
       @title = 'Finish'
       @description = ''
-      h = (self.wizard_form_data||{}).merge(params[:user] || {}) 
-      @user = build_wizard_model(h)
+      _build_wizard_model
       if request.post? && callback_performs_action?(:_on_post_finish_form)
         raise CallbackError, "render or redirect not allowed in :on_post(:finish) callback", caller
       end
@@ -37,7 +36,7 @@ class GeneratedController < ApplicationController
       callback_performs_action?(:_on_finish_form_finish)
       complete_wizard unless @do_not_complete
     ensure
-      self.wizard_form_data = h.merge(@user.attributes) if (@user && !@wizard_completed_flag)
+      _preserve_wizard_model
     end
   end        
 
@@ -49,8 +48,7 @@ class GeneratedController < ApplicationController
       @wizard = wizard_config
       @title = 'Init'
       @description = ''
-      h = (self.wizard_form_data||{}).merge(params[:user] || {}) 
-      @user = build_wizard_model(h)
+      _build_wizard_model
       if request.post? && callback_performs_action?(:_on_post_init_form)
         raise CallbackError, "render or redirect not allowed in :on_post(:init) callback", caller
       end
@@ -75,11 +73,10 @@ class GeneratedController < ApplicationController
         complete_wizard unless @do_not_complete
         return
       end
-      
       return if callback_performs_action?(:_on_init_form_next)
       redirect_to :action=>:second
     ensure
-      self.wizard_form_data = h.merge(@user.attributes) if (@user && !@wizard_completed_flag)
+      _preserve_wizard_model
     end
   end        
 
@@ -91,8 +88,7 @@ class GeneratedController < ApplicationController
       @wizard = wizard_config
       @title = 'Second'
       @description = ''
-      h = (self.wizard_form_data||{}).merge(params[:user] || {}) 
-      @user = build_wizard_model(h)
+      _build_wizard_model
       if request.post? && callback_performs_action?(:_on_post_second_form)
         raise CallbackError, "render or redirect not allowed in :on_post(:second) callback", caller
       end
@@ -117,11 +113,10 @@ class GeneratedController < ApplicationController
         complete_wizard unless @do_not_complete
         return
       end
-      
       return if callback_performs_action?(:_on_second_form_next)
       redirect_to :action=>:finish
     ensure
-      self.wizard_form_data = h.merge(@user.attributes) if (@user && !@wizard_completed_flag)
+      _preserve_wizard_model
     end
   end        
 
@@ -217,18 +212,36 @@ class GeneratedController < ApplicationController
     _on_wizard_finish
     redirect_to('/main/finished') unless self.performed?
   end
-  def build_wizard_model(params)
-    if (wizard_config.persist_model_per_page? && (model_id = params['id']))
-       begin
-        _model = User.find(model_id) 
-        _model.attributes = params
-        return _model
-      rescue
+  def _build_wizard_model
+    if self.wizard_config.persist_model_per_page?
+      h = self.wizard_form_data
+      if (h && model_id = h['id'])
+          _model = User.find(model_id)
+          _model.attributes = params[:user]||{}
+          @user = _model
+          return
       end
+      @user = User.new(params[:user])
+    else # persist data in session or flash
+      h = (self.wizard_form_data||{}).merge(params[:user] || {})
+      @user = User.new(h)
     end
-    User.new(params)
   end
-  hide_action :build_wizard_model, :save_wizard_model!
+  def _preserve_wizard_model
+    return unless (@user && !@wizard_completed_flag)
+    if self.wizard_config.persist_model_per_page?
+      @user.save_without_validation!
+      if request.get?
+        @user.errors.clear
+      else
+        @user.reject_non_validation_group_errors
+      end
+      self.wizard_form_data = {'id'=>@user.id}
+    else
+      self.wizard_form_data = @user.attributes
+    end
+  end
+  hide_action :_build_wizard_model, :_preserve_wizard_model
 
   def initial_referer
     session[:generated_irk]
@@ -339,20 +352,20 @@ class GeneratedController < ApplicationController
   def self.on_errors(*args, &block)
     self._define_action_callback_macro('on_errors', '_on_invalid_%s_form', *args, &block)
   end
+  def self.on_finish(*args, &block)
+    self._define_action_callback_macro('on_finish', '_on_%s_form_finish', *args, &block)
+  end
   def self.on_skip(*args, &block)
     self._define_action_callback_macro('on_skip', '_on_%s_form_skip', *args, &block)
+  end
+  def self.on_next(*args, &block)
+    self._define_action_callback_macro('on_next', '_on_%s_form_next', *args, &block)
   end
   def self.on_back(*args, &block)
     self._define_action_callback_macro('on_back', '_on_%s_form_back', *args, &block)
   end
   def self.on_cancel(*args, &block)
     self._define_action_callback_macro('on_cancel', '_on_%s_form_cancel', *args, &block)
-  end
-  def self.on_finish(*args, &block)
-    self._define_action_callback_macro('on_finish', '_on_%s_form_finish', *args, &block)
-  end
-  def self.on_next(*args, &block)
-    self._define_action_callback_macro('on_next', '_on_%s_form_next', *args, &block)
   end
   def self._define_action_callback_macro(macro_first, macro_last, *args, &block)
     return if args.empty?

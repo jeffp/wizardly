@@ -77,12 +77,17 @@ module ValidationGroup
         # jeffp: delete fields
         @current_validation_fields = nil
       end
+
+      def reject_non_validation_group_errors
+        return unless validation_group_enabled?
+        self.errors.remove_on(@current_validation_fields)
+      end
 			
       # jeffp: optimizer for someone writing custom :validate method -- no need
       # to validate fields outside the current validation group note: could also
       # use in validation modules to improve performance
       def should_validate?(attribute)
-	!self.validation_group_enabled? || (@current_validation_fields && @current_validation_fields.include?(attribute.to_sym))
+        !self.validation_group_enabled? || (@current_validation_fields && @current_validation_fields.include?(attribute.to_sym))
       end
 
       def validation_group_enabled?
@@ -104,6 +109,12 @@ module ValidationGroup
         # jeffp: setting @current_validation_fields and use of should_validate? optimizes code
         add_error = @base.respond_to?(:should_validate?) ? @base.should_validate?(attribute.to_sym) : true
         add_without_validation_group(attribute, msg, *args, &block) if add_error
+      end
+
+      def remove_on(attributes)
+        return unless attributes
+        attributes = [attributes] unless attributes.is_a?(Array)
+        @errors.reject!{|k,v| !attributes.include?(k.to_sym)}
       end
 			
       def self.included(base) #:nodoc:

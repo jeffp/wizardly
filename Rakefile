@@ -40,6 +40,13 @@ require 'spec/rake/spectask'
 namespace :spec do
   desc "Run all specs"
   task :all=>[:macro, :gen, :scaffold, :callback, :callback2, :callback3, :persist, :sandbox, :session]
+  desc "Test the AvatarController"
+  Spec::Rake::SpecTask.new(:avatar) do |t|
+    t.spec_files = FileList['spec/integrations/avatar_spec.rb']
+    t.libs << 'lib' << 'spec' << 'spec/integrations'
+    t.spec_opts = ['--options', 'spec/spec.opts']
+    t.rcov = false
+  end
   desc "Test the MacroController"
   Spec::Rake::SpecTask.new(:macro) do |t|
     t.spec_files = FileList['spec/integrations/macro_spec.rb']

@@ -77,6 +77,7 @@ describe "DataModes2Controller" do
     fill_in_init_page
     click_button cancel_button
     visit init_page_path
+    current_url.should include(init_page)
     field_with_id(/first/).value.should be_blank
     field_with_id(/last/).value.should be_blank
   end

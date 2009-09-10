@@ -23,7 +23,7 @@ module Wizardly
         @include_cancel_button = opts.key?(:cancel) ? opts[:cancel] : true
         @guard_entry = opts.key?(:guard) ? opts[:guard] : true
         @password_fields = opts[:mask_fields] || opts[:mask_passwords] || [:password, :password_confirmation]
-        @persist_model = opts[:persist_model] || :once
+        @persist_model = opts[:persist_model] || :per_page
         @form_data = opts[:form_data] || :session
         raise(ArgumentError, ":persist_model option must be one of :once or :per_page", caller) unless [:once, :per_page].include?(@persist_model)
         raise(ArgumentError, ":form_data option must be one of :sandbox or :session", caller) unless [:sandbox, :session].include?(@form_data)

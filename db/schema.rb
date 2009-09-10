@@ -30,6 +30,9 @@ ActiveRecord::Schema.define(:version => 20090718172749) do
     t.string   "gender"
     t.boolean  "programmer"
     t.string   "status"
+    t.string   "avatar_file_name"
+    t.string   "avatar_content_type"
+    t.integer  "avatar_file_size"
     t.datetime "created_at"
     t.datetime "updated_at"
   end

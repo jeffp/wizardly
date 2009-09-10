@@ -85,7 +85,6 @@ EVENTS
         page = @pages[id]
         finish_button = self.button_for_function(:finish).id
         next_button = self.button_for_function(:next).id
-        model_persist_line = self.persist_model_per_page? ? "@#{self.model}.save_without_validation!" : ''
 
         (mb = StringIO.new) << <<-ONE
   def #{page.name}
@@ -94,8 +93,7 @@ EVENTS
       @wizard = wizard_config
       @title = '#{page.title}'
       @description = '#{page.description}'
-      h = (self.wizard_form_data||{}).merge(params[:#{self.model}] || {}) 
-      @#{self.model} = build_wizard_model(h)
+      _build_wizard_model
       if request.post? && callback_performs_action?(:_on_post_#{id}_form)
         raise CallbackError, "render or redirect not allowed in :on_post(:#{id}) callback", caller
       end
@@ -128,7 +126,6 @@ EVENTS
         complete_wizard unless @do_not_complete
         return
       end
-      #{model_persist_line}
       return if callback_performs_action?(:_on_#{id}_form_#{next_button})
       redirect_to :action=>:#{self.next_page(id)}
         THREE
@@ -139,7 +136,6 @@ EVENTS
         complete_wizard unless @do_not_complete
         return
       end
-      #{model_persist_line}
       return if callback_performs_action?(:_on_#{id}_form_#{next_button})
       redirect_to :action=>:#{self.next_page(id)}
         FOUR
@@ -147,7 +143,7 @@ EVENTS
         
         mb << <<-ENSURE
     ensure
-      self.wizard_form_data = h.merge(@#{self.model}.attributes) if (@#{self.model} && !@wizard_completed_flag)
+      _preserve_wizard_model
     end
   end        
 ENSURE
@@ -281,18 +277,36 @@ SANDBOX
     _on_wizard_#{finish_button}
     redirect_to(#{Utils.formatted_redirect(self.completed_redirect)}) unless self.performed?
   end
-  def build_wizard_model(params)
-    if (wizard_config.persist_model_per_page? && (model_id = params['id']))
-       begin
-        _model = #{self.model_class_name}.find(model_id) 
-        _model.attributes = params
-        return _model
-      rescue
+  def _build_wizard_model
+    if self.wizard_config.persist_model_per_page?
+      h = self.wizard_form_data
+      if (h && model_id = h['id'])
+          _model = #{self.model_class_name}.find(model_id)
+          _model.attributes = params[:#{self.model}]||{}
+          @#{self.model} = _model
+          return
       end
+      @#{self.model} = #{self.model_class_name}.new(params[:#{self.model}])
+    else # persist data in session or flash
+      h = (self.wizard_form_data||{}).merge(params[:#{self.model}] || {})
+      @#{self.model} = #{self.model_class_name}.new(h)
     end
-    #{self.model_class_name}.new(params)
   end
-  hide_action :build_wizard_model, :save_wizard_model!
+  def _preserve_wizard_model
+    return unless (@#{self.model} && !@wizard_completed_flag)
+    if self.wizard_config.persist_model_per_page?
+      @#{self.model}.save_without_validation!
+      if request.get?
+        @#{self.model}.errors.clear
+      else
+        @#{self.model}.reject_non_validation_group_errors
+      end
+      self.wizard_form_data = {'id'=>@#{self.model}.id}
+    else
+      self.wizard_form_data = @#{self.model}.attributes
+    end
+  end
+  hide_action :_build_wizard_model, :_preserve_wizard_model
 
   def initial_referer
     session[:#{self.initial_referer_key}]
