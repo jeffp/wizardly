@@ -15,6 +15,10 @@ Install
 Examples
 
 * http://github.com/jeffp/wizardly-examples
+
+== Contributions
+
+Thanks for feedback from Roland Schulz, Steve Hoeksema, Morgan Christiansson, Jonathan Clarke
 	
 == Description
 
@@ -23,14 +27,13 @@ DRY up the Rails MVC implementation of a wizard.  In three easy steps, +wizardly
 produces the scaffolding and controller of a multi-step wizard.
 
 Features include:
-* Model-based definition
-* Wizard controller macro
-* Wizard scaffold generator
-* Simple wizard page helpers
-* Default and customizable wizard buttons
-* Page and wizard callbacks
-* High in Convention
-* Rich in Configuration
+* Model-based Wizard Definition
+* Wizard Controller Macros
+* Wizard Scaffold Generators
+* Sizard Form Helpers
+* Configurable Buttons
+* Callbacks
+* Paperclip Support
 
 == Example
 
@@ -189,8 +192,8 @@ Here's a list of options for the +act_wizardly_for+ controller macro
   :cancel => false
   :guard => false
   :mask_fields => [:password, :password_confirmation] (by default)
-  :persist_model => {:once|:per_page}
-  :form_data => {:sandbox|:session}
+  :persist_model => {:per_page|:once}
+  :form_data => {:session|:sandbox}
 
 Setting the :skip option to +true+ tells the scaffold helpers to include a skip button on each page.
 The :cancel option set to +false+ removes the 'cancel' button from the wizard views.
@@ -225,7 +228,7 @@ the application needs to navigate away and return to the wizard.
 The guarding behavior works a little differently depending on the :form_data setting.
 When :form_data is set to :session (the default behavior), guarding only occurs
 for the initial entry.  Once a user has entered the form and started it, while
-form data is being kept, the application may thereafter enter anywhere.  On the 
+form data is being kept, the application may thereafter enter anywhere.  On the
 contrary, if :form_data is set to :sandbox, entry is always guarded, and once the user
 leaves the wizard, entry may only occur at the initial page (as the form data has
 been reset).
@@ -233,13 +236,17 @@ been reset).
 ==== Persisting The Model
 
 The :persist_model option controls how the model is saved, either :once or :per_page.
-The default option :once, only saves the model when the wizard is completed, by the 
-user pressing a :finish button or :next button on the final page.  This method 
-prevents numerous incomplete models and possibly invalid models being saved to the
-database.
+The default setting :per_page, saves the model incrementally for each page that
+validates according to its validation group.  This setting may result in invalid and
+incomplete records in the database.
 
-The other option setting, :per_page, saves the model incrementally for each time 
-the form data validates as the user moves through the pages.  
+This problem can be remedied by using the :once setting, in which case, form data is
+kept in the session until the wizard is complete and then saved out to the database.
+
+The :once option does not work in all cases, particularly for any attribute that
+can not be marshalled and dumped in the session.  In particular, this will not work
+for forms with file uploads like any forms using Paperclip.  When using Paperclip, use
+the :per_page setting.
  
 
 === Buttons
