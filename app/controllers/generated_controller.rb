@@ -179,11 +179,15 @@ class GeneratedController < ApplicationController
   # for :form_data=>:session
   def guard_entry 
     if (r = request.env['HTTP_REFERER'])
-      h = ::ActionController::Routing::Routes.recognize_path(URI.parse(r).path)
-      return check_progression if (h[:controller]||'') == 'generated'
-      self.initial_referer = h unless self.initial_referer
+      begin
+        h = ::ActionController::Routing::Routes.recognize_path(URI.parse(r).path, {:method=>:get})
+      rescue
+      else
+        return check_progression if (h[:controller]||'') == 'generated'
+        self.initial_referer = h unless self.initial_referer
+      end
     end
-    # coming from outside the controller
+    # coming from outside the controller or no route for GET
     
     if (params[:action] == 'init' || params[:action] == 'index')
       return check_progression
@@ -330,9 +334,9 @@ class GeneratedController < ApplicationController
     cache = self.class.wizard_callbacks
     return false if cache.include?(methId)
 
-    begin
+    if self.respond_to?(methId, true)
       self.send(methId)
-    rescue NoMethodError
+    else
       cache << methId
       return false
     end

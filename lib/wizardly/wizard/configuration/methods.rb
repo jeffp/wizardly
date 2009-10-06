@@ -221,11 +221,15 @@ PROGRESSION
   # for :form_data=>:session
   def guard_entry 
     if (r = request.env['HTTP_REFERER'])
-      h = ::ActionController::Routing::Routes.recognize_path(URI.parse(r).path)
-      return check_progression if (h[:controller]||'') == '#{self.controller_name}'
-      self.initial_referer = h unless self.initial_referer
+      begin
+        h = ::ActionController::Routing::Routes.recognize_path(URI.parse(r).path, {:method=>:get})
+      rescue
+      else
+        return check_progression if (h[:controller]||'') == '#{self.controller_path}'
+        self.initial_referer = h unless self.initial_referer
+      end
     end
-    # coming from outside the controller
+    # coming from outside the controller or no route for GET
     #{guard_line}
     if (params[:action] == '#{first_page}' || params[:action] == 'index')
       return check_progression
@@ -244,9 +248,13 @@ SESSION
   # for :form_data=>:sandbox            
   def guard_entry 
     if (r = request.env['HTTP_REFERER'])
-      h = ::ActionController::Routing::Routes.recognize_path(URI.parse(r).path)
-      return check_progression if (h[:controller]||'') == '#{self.controller_name}'
-      self.initial_referer = h
+      begin
+        h = ::ActionController::Routing::Routes.recognize_path(URI.parse(r).path, {:method=>:get})
+      rescue
+      else
+        return check_progression if (h[:controller]||'') == '#{self.controller_path}'
+        self.initial_referer = h
+      end
     else
       self.initial_referer = nil 
     end
@@ -395,9 +403,9 @@ SANDBOX
     cache = self.class.wizard_callbacks
     return false if cache.include?(methId)
 
-    begin
+    if self.respond_to?(methId, true)
       self.send(methId)
-    rescue NoMethodError
+    else
       cache << methId
       return false
     end

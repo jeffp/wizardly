@@ -18,7 +18,7 @@ Examples
 
 == Contributions
 
-Thanks for feedback from Roland Schulz, Steve Hoeksema, Morgan Christiansson, Jonathan Clarke
+Thanks for feedback from Roland Schulz, Steve Hoeksema, Morgan Christiansson, Jonathan Clarke, Nate Delage
 	
 == Description
 
