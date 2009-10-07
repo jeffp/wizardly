@@ -10,7 +10,7 @@ Source
 
 Install
 
-* sudo gem install jeffp-wizardly --source=http://http://gems.github.com
+* sudo gem install wizardly --source=http://http://gemcutter.org
 
 Examples
 
@@ -67,7 +67,10 @@ General usage and configuration of wizardly follows.  See the examples at
 
 Put the following in your application's config block in config/environment.rb
 
-  config.gem 'jeffp-wizardly'
+  config.gem 'wizardly'
+
+The temporarily (or permanently depending on github's reinstatement of gems) resides at
+gemcutter.org.  Make sure you have added gemcutter.org to your gem sources
 
 and run the install gems rake task on your application
 
